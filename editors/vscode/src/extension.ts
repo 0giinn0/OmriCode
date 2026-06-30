@@ -36,7 +36,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const agentLoop = new AgentLoop(configManager, toolRegistry);
 
   // --- Initialize chat panel (WebView) ---
-  const chatPanel = new ChatPanel(context, agentLoop, configManager);
+  const chatPanel = new ChatPanel(context, agentLoop, configManager, toolRegistry);
   chatPanel.initialize();
 
   // ──────────────────────────────────────────────

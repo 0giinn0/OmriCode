@@ -40,6 +40,7 @@ export class ToolRegistry {
   private undoStack: UndoRecord[] = [];
   private redoStack: UndoRecord[] = [];
   private configManager: ConfigManager;
+  private currentExecutionId: string = '';
 
   constructor(configManager: ConfigManager) {
     this.configManager = configManager;
@@ -295,6 +296,7 @@ export class ToolRegistry {
       result.durationMs = Date.now() - start;
 
       // Track undoable edits
+      this.currentExecutionId = request.id;
       if (request.name === 'edit_file' || request.name === 'write_file') {
         // Undo tracking is handled inside the tool handler
       }
@@ -307,6 +309,41 @@ export class ToolRegistry {
         error: err instanceof Error ? err.message : 'Tool execution error',
         durationMs: Date.now() - start
       };
+    }
+  }
+
+  /**
+   * Get the undo stack for displaying in the UI.
+   */
+  getUndoStack(): UndoRecord[] {
+    return [...this.undoStack];
+  }
+
+  /**
+   * Get the redo stack for displaying in the UI.
+   */
+  getRedoStack(): UndoRecord[] {
+    return [...this.redoStack];
+  }
+
+  /**
+   * Undo a specific edit by its tool execution ID.
+   */
+  undoByExecutionId(executionId: string): boolean {
+    const idx = this.undoStack.findIndex(r => r.toolExecutionId === executionId);
+    if (idx === -1) return false;
+
+    const [record] = this.undoStack.splice(idx, 1);
+    this.redoStack.push(record);
+
+    try {
+      fs.writeFileSync(record.filePath, record.originalContent, 'utf-8');
+      vscode.window.showInformationMessage(
+        `Reverted edit to ${record.filePath.split('/').pop() || record.filePath.split('\\').pop()}`
+      );
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -380,7 +417,7 @@ export class ToolRegistry {
           filePath,
           originalContent: original,
           newContent: content,
-          toolExecutionId: crypto.randomUUID(),
+          toolExecutionId: this.currentExecutionId,
           description: `Write to ${filePath.split('/').pop() || filePath.split('\\').pop()}`
         });
       }
@@ -423,7 +460,7 @@ export class ToolRegistry {
         filePath,
         originalContent: original,
         newContent: updated,
-        toolExecutionId: crypto.randomUUID(),
+        toolExecutionId: this.currentExecutionId,
         description: `Edit ${filePath.split('/').pop() || filePath.split('\\').pop()}`
       });
 

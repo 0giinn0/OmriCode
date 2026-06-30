@@ -18,12 +18,14 @@ import * as vscode from 'vscode';
 import { ConfigManager } from '../config/ConfigManager';
 import { ProviderTable } from '../config/ProviderTable';
 import { AgentLoop } from '../agent/AgentLoop';
+import { ToolRegistry } from '../tools/ToolRegistry';
 import { PanelSnap, SnapZone } from './PanelSnap';
 
 export class ChatPanel implements vscode.Disposable {
   private context: vscode.ExtensionContext;
   private agentLoop: AgentLoop;
   private configManager: ConfigManager;
+  private toolRegistry: ToolRegistry;
   private panelSnap: PanelSnap;
   private panel: vscode.WebviewPanel | null = null;
   private disposables: vscode.Disposable[] = [];
@@ -31,11 +33,13 @@ export class ChatPanel implements vscode.Disposable {
   constructor(
     context: vscode.ExtensionContext,
     agentLoop: AgentLoop,
-    configManager: ConfigManager
+    configManager: ConfigManager,
+    toolRegistry: ToolRegistry
   ) {
     this.context = context;
     this.agentLoop = agentLoop;
     this.configManager = configManager;
+    this.toolRegistry = toolRegistry;
     this.panelSnap = new PanelSnap(configManager);
   }
 
@@ -252,6 +256,43 @@ export class ChatPanel implements vscode.Disposable {
             });
           }
         }
+        break;
+
+      case 'revertEdit':
+        const execId = payload.toolExecutionId as string;
+        if (execId) {
+          const reverted = this.toolRegistry.undoByExecutionId(execId);
+          this.postMessage({
+            type: 'revertResult',
+            payload: { toolExecutionId: execId, success: reverted }
+          });
+        }
+        break;
+
+      case 'undoLastEdit':
+        const undone = this.toolRegistry.undoLastEdit();
+        this.postMessage({
+          type: 'undoResult',
+          payload: { success: undone }
+        });
+        break;
+
+      case 'redoLastEdit':
+        const redone = this.toolRegistry.redoLastEdit();
+        this.postMessage({
+          type: 'redoResult',
+          payload: { success: redone }
+        });
+        break;
+
+      case 'getUndoStack':
+        this.postMessage({
+          type: 'undoStack',
+          payload: {
+            undoStack: this.toolRegistry.getUndoStack(),
+            redoStack: this.toolRegistry.getRedoStack()
+          }
+        });
         break;
 
       case 'resetConfig':
@@ -626,20 +667,47 @@ body{font-family:var(--font-mono);background:var(--bg);color:var(--text);font-si
     body.innerHTML = '<div class="omricode-thinking"><span class="omricode-thinking-dot"></span><span class="omricode-thinking-dot"></span><span class="omricode-thinking-dot"></span></div>';
   }
 
+  let pendingToolExecutionId = null;
+
   // ─── Tool call card ───
-  function addToolCard(messageId, toolName, args, status) {
+  function addToolCard(messageId, toolName, args, status, toolExecutionId) {
     const bubble = messagesEl.querySelector('[data-message-id="' + messageId + '"]');
     if (!bubble) return;
     const body = bubble.querySelector('.omricode-bubble-body');
 
     const card = document.createElement('div');
     card.className = 'omricode-tool-card ' + status;
-    card.innerHTML = '<div class="omricode-tool-card-header">◇ ' + toolName + ' <span style="margin-left:auto;font-size:9px">' + status + '</span></div>';
+    card.dataset.toolExecId = toolExecutionId || '';
+
+    const headerHtml = '<div class="omricode-tool-card-header">◇ ' + toolName + ' <span style="margin-left:auto;font-size:9px">' + status + '</span></div>';
+    let bodyHtml = '';
     if (args) {
-      card.innerHTML += '<div class="omricode-tool-card-body"><pre style="margin:0;font-size:9px">' + escapeHtml(JSON.stringify(args, null, 2).slice(0, 200)) + '</pre></div>';
+      bodyHtml += '<div class="omricode-tool-card-body"><pre style="margin:0;font-size:9px">' + escapeHtml(JSON.stringify(args, null, 2).slice(0, 200)) + '</pre></div>';
     }
+
+    let footerHtml = '';
+    if (status === 'success' || status === 'error') {
+      footerHtml = '<div class="omricode-tool-card-footer" style="display:flex;gap:4px;padding:4px 8px;border-top:1px solid var(--border)">';
+      footerHtml += '<button class="omricode-revert-btn" data-exec-id="' + (toolExecutionId || '') + '" style="padding:2px 6px;border-radius:2px;background:var(--surface-3);border:1px solid var(--border);color:var(--error);cursor:pointer;font-family:var(--font-mono);font-size:9px">↩ Revert</button>';
+      footerHtml += '</div>';
+    }
+
+    card.innerHTML = headerHtml + bodyHtml + footerHtml;
     body.appendChild(card);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    // Attach revert click handler
+    const revertBtn = card.querySelector('.omricode-revert-btn');
+    if (revertBtn) {
+      revertBtn.addEventListener('click', function() {
+        const execId = this.dataset.execId;
+        if (execId) {
+          vscode.postMessage({ type: 'revertEdit', payload: { toolExecutionId: execId } });
+          this.textContent = '↻ reverting...';
+          this.disabled = true;
+        }
+      });
+    }
   }
 
   function escapeHtml(str) {
@@ -720,12 +788,14 @@ body{font-family:var(--font-mono);background:var(--bg);color:var(--text);font-si
 
       case 'toolCallStart':
         setStatus('executing');
-        addToolCard(payload.messageId, payload.toolCall.name, payload.toolCall.arguments, 'running');
+        pendingToolExecutionId = payload.toolCall.id || null;
+        addToolCard(payload.messageId, payload.toolCall.name, payload.toolCall.arguments, 'running', null);
         break;
 
       case 'toolCallComplete':
         setStatus('thinking');
-        addToolCard(payload.messageId, payload.toolCall.name + ' ✓', null, 'success');
+        const execDoneId = payload.toolCall.id || pendingToolExecutionId;
+        addToolCard(payload.messageId, payload.toolCall.name + ' ✓', null, 'success', execDoneId);
         break;
 
       case 'messageComplete':
@@ -748,12 +818,37 @@ body{font-family:var(--font-mono);background:var(--bg);color:var(--text);font-si
         renderProviderTable(payload.providers || []);
         break;
 
+      case 'revertResult':
+        if (payload.success) {
+          setStatus('idle');
+          // Re-enable send button after revert
+          isProcessing = false;
+          sendBtn.disabled = false;
+        }
+        break;
+
       case 'snapChanged':
         const props = payload.cssProps || {};
         Object.entries(props).forEach(function(entry) {
           document.documentElement.style.setProperty(entry[0], entry[1]);
         });
         break;
+    }
+  });
+
+  // ─── Keyboard shortcuts ───
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      vscode.postMessage({ type: 'undoLastEdit' });
+    }
+    if (e.ctrlKey && e.key === 'z' && e.shiftKey) {
+      e.preventDefault();
+      vscode.postMessage({ type: 'redoLastEdit' });
+    }
+    if (e.ctrlKey && e.key === 'y') {
+      e.preventDefault();
+      vscode.postMessage({ type: 'redoLastEdit' });
     }
   });
 
