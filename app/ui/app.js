@@ -227,11 +227,11 @@
       div.style.paddingLeft = (8 + depth * 12) + 'px';
       const expand = document.createElement('span');
       expand.className = 'file-expand';
-      expand.textContent = isDir ? (item.expanded ? '▼' : '▶') : '';
+      expand.textContent = isDir ? (item.expanded ? '▾' : '▹') : '';
       div.appendChild(expand);
       const icon = document.createElement('span');
       icon.className = 'file-icon';
-      icon.textContent = isDir ? '📁' : getFileIcon(item.name);
+      icon.textContent = isDir ? '⊟' : getFileIcon(item.name);
       div.appendChild(icon);
       const name = document.createElement('span');
       name.className = 'file-name';
@@ -262,14 +262,14 @@
   function getFileIcon(name) {
     const ext = name.split('.').pop().toLowerCase();
     const icons = {
-      js:'📜',ts:'📘',py:'🐍',gd:'🎮',rs:'🦀',
-      json:'📋',yml:'⚙',yaml:'⚙',md:'📝',html:'🌐',
-      css:'🎨',scss:'🎨',sql:'🗃',sh:'💻',ps1:'💻',
-      c:'⚡',cpp:'⚡',h:'⚡',java:'☕',go:'🔵',
-      rb:'💎',php:'🐘',swift:'🟠',kt:'🟣',dart:'🎯',
-      lua:'🌙',vue:'🟩',svelte:'🟠',jsx:'⚛',tsx:'⚛',
-      toml:'⚙',lock:'🔒',env:'🔑',gitignore:'🙈',
-      dockerfile:'🐳',xml:'📰'
+      js:'◈',ts:'T',py:'◊',gd:'G',rs:'R',
+      json:'⦃',yml:'◎',yaml:'◎',md:'≡',html:'○',
+      css:'♢',scss:'♢',sql:'⊞',sh:'▹',ps1:'▹',
+      c:'⚡',cpp:'⚡',h:'⚡',java:'J',go:'G',
+      rb:'◇',php:'P',swift:'S',kt:'K',dart:'T',
+      lua:'L',vue:'V',svelte:'S',jsx:'◈',tsx:'T',
+      toml:'◎',lock:'⊡',env:'K',gitignore:'⊡',
+      dockerfile:'D',xml:'X'
     };
     return icons[ext] || '📄';
   }
@@ -296,13 +296,13 @@
   $('#chatToggle').onclick = () => {
     chatOpen = !chatOpen;
     $('#ideChat').classList.toggle('collapsed', !chatOpen);
-    $('#chatToggle').textContent = chatOpen ? '▶' : '◀';
+    $('#chatToggle').textContent = chatOpen ? '▹' : '◃';
   };
 
   $('#sidebarClose').onclick = () => {
     sidebarOpen = !sidebarOpen;
     $('#ideSidebar').classList.toggle('collapsed', !sidebarOpen);
-    $('#sidebarClose').textContent = sidebarOpen ? '◀' : '▶';
+    $('#sidebarClose').textContent = sidebarOpen ? '◃' : '▹';
   };
 
   // Snap via right-click menu or header drag
@@ -383,7 +383,7 @@
         chat.classList.add('collapsed');
         chatOpen = false;
         chat.style.position = '';
-        $('#chatToggle').textContent = '◀';
+        $('#chatToggle').textContent = '◃';
         break;
     }
   }
@@ -616,11 +616,11 @@
     if (models.length > 2) {
       const leftBtn = document.createElement('button');
       leftBtn.className = 'model-scroll-btn';
-      leftBtn.textContent = '◀';
+      leftBtn.textContent = '◃';
       leftBtn.onclick = () => { scroll.scrollBy({ left: -120, behavior: 'smooth' }); };
       const rightBtn = document.createElement('button');
       rightBtn.className = 'model-scroll-btn';
-      rightBtn.textContent = '▶';
+      rightBtn.textContent = '▹';
       rightBtn.onclick = () => { scroll.scrollBy({ left: 120, behavior: 'smooth' }); };
       scroll.parentNode.insertBefore(leftBtn, scroll);
       scroll.parentNode.appendChild(rightBtn);
@@ -763,7 +763,7 @@
     if (msgId) bubble.dataset.msgId = msgId;
     const header = document.createElement('div');
     header.className = 'bubble-header';
-    header.innerHTML = '<span>' + (role === 'user' ? '◆' : '⬢') + '</span> ' + role;
+    header.innerHTML = '<span>' + (role === 'user' ? '▹' : '◇') + '</span> ' + role;
     bubble.appendChild(header);
     const body = document.createElement('div');
     body.className = 'bubble-body';
@@ -1016,7 +1016,7 @@
     const el = document.createElement('div');
     el.className = 'peer-item';
     el.dataset.peer = pid;
-    el.innerHTML = `<span style="color:var(--success)">⬢</span> ${pid} <button class="tb-btn" style="margin-left:auto;font-size:8px;padding:0 4px">✕</button>`;
+    el.innerHTML = `<span style="color:var(--success)">◇</span> ${pid} <button class="tb-btn" style="margin-left:auto;font-size:8px;padding:0 4px">✕</button>`;
     el.querySelector('button').onclick = () => {
       const c = peerConnections.get(pid);
       if (c) c.close();
@@ -1058,13 +1058,13 @@
       const data = await resp.json();
       await navigator.clipboard.writeText(data.content);
       $('#shareCopyContent').textContent = '✓ Copied!';
-      setTimeout(() => { $('#shareCopyContent').textContent = '📋 Copy Content'; }, 2000);
+      setTimeout(() => { $('#shareCopyContent').textContent = '◻ Copy Content'; }, 2000);
     } catch { /* ignore */ }
   };
   $('#shareCopyPath').onclick = async () => {
     await navigator.clipboard.writeText(activeTabPath);
     $('#shareCopyPath').textContent = '✓ Copied!';
-    setTimeout(() => { $('#shareCopyPath').textContent = '📁 Copy File Path'; }, 2000);
+    setTimeout(() => { $('#shareCopyPath').textContent = '⊟ Copy File Path'; }, 2000);
   };
   $('#shareCopyLink').onclick = async () => {
     await navigator.clipboard.writeText($('#shareLinkInput').value);

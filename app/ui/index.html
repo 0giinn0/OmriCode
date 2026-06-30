@@ -11,7 +11,7 @@
   <!-- Title Bar -->
   <div class="titlebar" id="titlebar">
     <div class="titlebar-brand">
-      <div class="titlebar-icon">⬢</div>
+      <div class="titlebar-icon">◇</div>
       <span>omricode</span>
       <span class="titlebar-branch" id="workspaceLabel">no workspace</span>
     </div>
@@ -19,9 +19,9 @@
     <div class="titlebar-status" id="statusText">idle</div>
     <div class="titlebar-actions">
       <span class="activity-dot" id="activityDot"></span>
-      <button class="tb-btn" id="navSettings" title="Settings">⚙</button>
-      <button class="tb-btn" id="btnMinimize" title="Minimize">─</button>
-      <button class="tb-btn" id="btnMaximize" title="Maximize">□</button>
+      <button class="tb-btn" id="navSettings" title="Settings">⊙</button>
+      <button class="tb-btn" id="btnMinimize" title="Minimize">‒</button>
+      <button class="tb-btn" id="btnMaximize" title="Maximize">◻</button>
       <button class="tb-btn tb-close" id="btnClose" title="Close">✕</button>
     </div>
   </div>
@@ -32,7 +32,7 @@
     <div class="ide-sidebar" id="ideSidebar">
       <div class="sidebar-header">
         <span>EXPLORER</span>
-        <button class="tb-btn" id="sidebarClose" title="Close sidebar">◀</button>
+        <button class="tb-btn" id="sidebarClose" title="Close sidebar">◃</button>
       </div>
       <div class="sidebar-content" id="sidebarContent">
         <div class="sidebar-placeholder" id="sidebarPlaceholder">
@@ -49,15 +49,15 @@
     <!-- Center: Editor -->
     <div class="ide-editor" id="ideEditor">
       <div class="editor-toolbar" id="editorToolbar" style="display:none">
-        <button class="tb-btn" id="previewBtn" title="Toggle preview">🌐 Preview</button>
-        <button class="tb-btn" id="shareBtn" title="Share file">📤 Share</button>
+        <button class="tb-btn" id="previewBtn" title="Toggle preview">○ Preview</button>
+        <button class="tb-btn" id="shareBtn" title="Share file">⤒ Share</button>
         <span style="flex:1"></span>
-        <button class="tb-btn" id="terminalToggleBtn" title="Toggle terminal">⬢ Terminal</button>
+        <button class="tb-btn" id="terminalToggleBtn" title="Toggle terminal">◇ Terminal</button>
       </div>
       <div id="editorContainer" style="flex:1;position:relative"></div>
       <div class="editor-welcome" id="editorWelcome">
         <div class="welcome-content">
-          <h1>⬢ OmriCode</h1>
+          <h1>◇ OmriCode</h1>
           <p>Open a file from the explorer or start a conversation.</p>
           <div class="welcome-actions">
             <div class="welcome-card" id="welcomeNewFile">
@@ -65,11 +65,11 @@
               <span>New File</span>
             </div>
             <div class="welcome-card" id="welcomeOpenFolder">
-              <span class="welcome-icon">📂</span>
+              <span class="welcome-icon">⊟</span>
               <span>Open Folder</span>
             </div>
             <div class="welcome-card" id="welcomeChat">
-              <span class="welcome-icon">💬</span>
+              <span class="welcome-icon">○</span>
               <span>Start Chatting</span>
             </div>
           </div>
@@ -77,7 +77,7 @@
       </div>
       <div class="preview-panel" id="previewPanel" style="display:none">
         <div class="preview-header">
-          <span>🌐 Preview</span>
+          <span>○ Preview</span>
           <div class="preview-url-bar">
             <input type="text" id="previewUrl" value="" placeholder="file:/// or http://..." spellcheck="false">
             <button class="tb-btn" id="previewGo">Go</button>
@@ -88,7 +88,7 @@
       </div>
       <div class="terminal-panel" id="terminalPanel" style="display:none">
         <div class="terminal-header">
-          <span>⬢ TERMINAL</span>
+          <span>◇ TERMINAL</span>
           <div class="terminal-actions">
             <button class="tb-btn" id="terminalNewBtn" title="New terminal">+</button>
             <button class="tb-btn" id="terminalCloseBtn" title="Close terminal">✕</button>
@@ -106,12 +106,12 @@
         <div class="model-scroll-wrap">
           <div class="model-scroll" id="modelScroll"></div>
         </div>
-        <button class="tb-btn" id="chatToggle" title="Toggle chat">▶</button>
+        <button class="tb-btn" id="chatToggle" title="Toggle chat">▹</button>
       </div>
       <div class="chat-body" id="chatBody">
         <div class="messages" id="messagesContainer">
           <div class="onboarding" id="onboardingWizard">
-            <h2>⬢ Welcome</h2>
+            <h2>◇ Welcome</h2>
             <p>Ask me anything about your code.</p>
           </div>
         </div>
@@ -136,13 +136,13 @@
   <div class="modal-overlay" id="shareModal" style="display:none">
     <div class="modal" style="width:480px">
       <div class="modal-header">
-        <span>📤 Share & Collaborate</span>
+        <span>⤒ Share & Collaborate</span>
         <button class="tb-btn" id="shareModalClose">✕</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
         <!-- Collaborative Sharing -->
         <div class="settings-section">
-          <h3>🔗 Live Share (Peer-to-Peer)</h3>
+          <h3>⊡ Live Share (Peer-to-Peer)</h3>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
             <span style="font-size:9px;color:var(--text-muted)">Your ID:</span>
             <span id="peerIdDisplay" style="font-size:10px;color:var(--accent);font-weight:500">connecting...</span>
@@ -157,13 +157,13 @@
         </div>
         <!-- File Sharing -->
         <div class="settings-section">
-          <h3>📄 Share File</h3>
+          <h3>◇ Share File</h3>
           <div id="shareFileName" style="font-size:10px;color:var(--accent);margin-bottom:4px"></div>
           <div class="setting-row">
-            <button class="btn" id="shareCopyContent" style="flex:1;justify-content:center">📋 Copy Content</button>
+            <button class="btn" id="shareCopyContent" style="flex:1;justify-content:center">◻ Copy Content</button>
           </div>
           <div class="setting-row">
-            <button class="btn" id="shareCopyPath" style="flex:1;justify-content:center">📁 Copy File Path</button>
+            <button class="btn" id="shareCopyPath" style="flex:1;justify-content:center">⊟ Copy File Path</button>
           </div>
           <div class="setting-row">
             <input type="text" id="shareLinkInput" readonly style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:4px 8px;font-family:var(--font-mono);font-size:9px">
