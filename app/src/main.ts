@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen, Notification, IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen, Notification, dialog, IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
 import { AgentLoop } from './agent/AgentLoop';
 import { ProviderGateway } from './providers/ProviderGateway';
@@ -125,6 +125,17 @@ function registerIpcHandlers(): void {
   ipcMain.handle('minimize', () => mainWindow?.minimize());
   ipcMain.handle('maximize', () => { if (mainWindow?.isMaximized()) mainWindow.unmaximize(); else mainWindow?.maximize(); });
   ipcMain.handle('close', () => mainWindow?.hide());
+
+  // Workspace / Project
+  ipcMain.handle('select-folder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow!, { properties: ['openDirectory'] });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const folder = result.filePaths[0];
+    settingsManager.update({ workspacePath: folder });
+    return folder;
+  });
+
+  ipcMain.handle('get-workspace', () => settingsManager.get().workspacePath || '');
 
   // Settings
   ipcMain.handle('get-settings', () => ({ settings: settingsManager.get(), themeVars: settingsManager.getThemeVars() }));

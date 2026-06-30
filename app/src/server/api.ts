@@ -1,5 +1,7 @@
 import * as http from 'http';
 import * as url from 'url';
+import * as fs from 'fs';
+import * as path from 'path';
 import { AgentLoop } from '../agent/AgentLoop';
 import { ProviderGateway } from '../providers/ProviderGateway';
 import { ToolRegistry } from '../tools/ToolRegistry';
@@ -106,6 +108,14 @@ export function startServer(
 
         case req.method === 'POST' && pathname === '/context':
           await handleContext(req, res, clientManager);
+          break;
+
+        case req.method === 'GET' && pathname === '/files/tree':
+          handleFilesTree(req, res);
+          break;
+
+        case req.method === 'GET' && pathname === '/files/preview':
+          handleFilePreview(req, res);
           break;
 
         case req.method === 'POST' && pathname === '/heartbeat':
@@ -299,6 +309,81 @@ function getToolTarget(toolName: string): 'editor' | 'local' {
     'create_mesh', 'modify_mesh', 'apply_modifier', 'set_material',
     'open_editor_file', 'show_diagnostic', 'code_action'];
   return editorTools.includes(toolName) ? 'editor' : 'local';
+}
+
+function handleFilesTree(req: http.IncomingMessage, res: http.ServerResponse): void {
+  const parsed = url.parse(req.url || '', true);
+  const dirPath = parsed.query.path as string || '';
+  if (!dirPath || !fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid directory path' }));
+    return;
+  }
+  try {
+    const tree = buildTree(dirPath);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(tree));
+  } catch (err) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: (err as Error).message }));
+  }
+}
+
+function handleFilePreview(req: http.IncomingMessage, res: http.ServerResponse): void {
+  const parsed = url.parse(req.url || '', true);
+  const filePath = parsed.query.path as string || '';
+  if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid file path' }));
+    return;
+  }
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.size > 1024 * 1024) { // >1MB
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'File too large to preview' }));
+      return;
+    }
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const ext = path.extname(filePath).slice(1);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ content, ext, name: path.basename(filePath), size: stat.size }));
+  } catch {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Failed to read file' }));
+  }
+}
+
+function buildTree(dirPath: string, depth = 0): Array<Record<string, unknown>> {
+  if (depth > 3) return [{ name: '...', type: 'limit' }];
+  const result: Array<Record<string, unknown>> = [];
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dirPath);
+  } catch {
+    return result;
+  }
+  const skip = new Set(['node_modules', '.git', '.omricode', '__pycache__', '.venv', 'venv', '.gitkeep', 'dist', 'build', 'target', 'env', '.env']);
+  for (const entry of entries.sort((a, b) => {
+    const aDir = fs.statSync(path.join(dirPath, a)).isDirectory();
+    const bDir = fs.statSync(path.join(dirPath, b)).isDirectory();
+    if (aDir && !bDir) return -1;
+    if (!aDir && bDir) return 1;
+    return a.localeCompare(b);
+  })) {
+    if (skip.has(entry)) continue;
+    if (entry.startsWith('.')) continue;
+    const fullPath = path.join(dirPath, entry);
+    let stat: fs.Stats;
+    try { stat = fs.statSync(fullPath); } catch { continue; }
+    const item: Record<string, unknown> = { name: entry, path: fullPath, type: stat.isDirectory() ? 'dir' : 'file' };
+    if (stat.isDirectory()) {
+      item.children = buildTree(fullPath, depth + 1);
+      item.expanded = depth < 1;
+    }
+    result.push(item);
+  }
+  return result;
 }
 
 function readBody(req: http.IncomingMessage): Promise<string> {

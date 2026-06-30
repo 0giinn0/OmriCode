@@ -21,6 +21,206 @@
   let providers = [];
   let pendingToolExecutionId = null;
 
+  // ─── File Explorer ───
+  let fileTreeData = [];
+
+  async function loadFileTree() {
+    const workspace = settings.workspacePath || '';
+    $('#filesPathLabel').textContent = workspace || 'No workspace selected';
+    if (!workspace) {
+      $('#filesTree').innerHTML = '<div class="files-empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:11px">Select a workspace folder in Settings to browse files.</div>';
+      return;
+    }
+    try {
+      const resp = await fetch(`http://127.0.0.1:${settings.serverPort || 18427}/files/tree?path=${encodeURIComponent(workspace)}`);
+      if (!resp.ok) throw new Error('Server error');
+      fileTreeData = await resp.json();
+      renderFileTree(fileTreeData);
+    } catch {
+      $('#filesTree').innerHTML = '<div class="files-empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:11px">Server not available. Run the app and select a workspace.</div>';
+    }
+  }
+
+  function renderFileTree(items, container) {
+    const el = container || $('#filesTree');
+    el.innerHTML = '';
+    const ul = document.createElement('div');
+    renderTreeLevel(items, ul, 0);
+    el.appendChild(ul);
+  }
+
+  function renderTreeLevel(items, parent, depth) {
+    if (!items || !items.length) return;
+    items.forEach(item => {
+      const isDir = item.type === 'dir';
+      const div = document.createElement('div');
+      div.className = 'file-item' + (isDir ? ' dir' : '');
+      div.style.paddingLeft = (10 + depth * 14) + 'px';
+
+      const expand = document.createElement('span');
+      expand.className = 'file-expand';
+      expand.textContent = isDir ? (item.expanded ? '▼' : '▶') : '';
+      div.appendChild(expand);
+
+      const icon = document.createElement('span');
+      icon.className = 'file-icon';
+      icon.textContent = isDir ? '📁' : getFileIcon(item.name);
+      div.appendChild(icon);
+
+      const name = document.createElement('span');
+      name.className = 'file-name';
+      name.textContent = item.name;
+      div.appendChild(name);
+
+      parent.appendChild(div);
+
+      if (isDir && item.expanded && item.children) {
+        const childrenContainer = document.createElement('div');
+        childrenContainer.className = 'file-children';
+        parent.appendChild(childrenContainer);
+        renderTreeLevel(item.children, childrenContainer, depth + 1);
+      }
+
+      div.onclick = () => {
+        if (isDir) {
+          item.expanded = !item.expanded;
+          renderFileTree(fileTreeData);
+        } else {
+          $$('.file-item').forEach(el => el.classList.remove('selected'));
+          div.classList.add('selected');
+          const fullPath = item.path || item.name;
+          loadFilePreview(fullPath);
+        }
+      };
+    });
+  }
+
+  function getFileIcon(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const icons = {
+      js: '📜', ts: '📘', py: '🐍', gd: '🎮', rs: '🦀',
+      json: '📋', yml: '⚙', yaml: '⚙', md: '📝', html: '🌐',
+      css: '🎨', scss: '🎨', sass: '🎨', xml: '📰', sql: '🗃',
+      sh: '💻', ps1: '💻', bat: '💻', dockerfile: '🐳',
+      gitignore: '🙈', env: '🔑', lock: '🔒', toml: '⚙',
+      c: '⚡', cpp: '⚡', h: '⚡', hpp: '⚡', java: '☕',
+      go: '🔵', rb: '💎', php: '🐘', swift: '🟠', kt: '🟣',
+      dart: '🎯', lua: '🌙', vue: '🟩', svelte: '🟠', jsx: '⚛',
+      tsx: '⚛'
+    };
+    return icons[ext] || '📄';
+  }
+
+  $('#filesRefreshBtn').onclick = loadFileTree;
+
+  async function loadFilePreview(fullPath) {
+    const previewPane = $('#filePreviewPane');
+    const nameEl = $('#previewFileName');
+    const contentEl = $('#filePreviewContent');
+    try {
+      const resp = await fetch(`http://127.0.0.1:${settings.serverPort || 18427}/files/preview?path=${encodeURIComponent(fullPath)}`);
+      if (!resp.ok) throw new Error('Failed to load');
+      const data = await resp.json();
+      nameEl.textContent = data.name;
+      contentEl.textContent = data.content;
+      contentEl.style.color = 'var(--text-secondary)';
+      previewPane.style.display = 'flex';
+    } catch {
+      nameEl.textContent = path.basename(fullPath);
+      contentEl.textContent = 'Failed to load file preview';
+      contentEl.style.color = 'var(--error)';
+      previewPane.style.display = 'flex';
+    }
+  }
+
+  $('#previewCloseBtn').onclick = () => {
+    $('#filePreviewPane').style.display = 'none';
+  };
+
+  // ─── Folder picker ───
+  const workspacePathEl = $('#workspacePath');
+  $('#selectFolderBtn').onclick = async () => {
+    const folder = await api.selectFolder();
+    if (folder) workspacePathEl.value = folder;
+  };
+
+  // ─── Provider table ───
+  const providerTableBody = $('#providerTableBody');
+
+  async function loadProviders() {
+    providers = await api.getProviders();
+    renderProviderTable();
+  }
+
+  function renderProviderTable() {
+    providerTableBody.innerHTML = '';
+    providers.forEach((p, i) => {
+      const tr = document.createElement('tr');
+      if (p.isActive) tr.className = 'active';
+      tr.innerHTML = `
+        <td><input type="radio" name="activeProvider" value="${p.id}" class="provider-radio" ${p.isActive ? 'checked' : ''}></td>
+        <td><input type="text" value="${escapeAttr(p.name)}" class="pv-name" data-id="${p.id}"></td>
+        <td><input type="text" value="${escapeAttr(p.endpoint)}" class="pv-endpoint" data-id="${p.id}"></td>
+        <td><input type="text" value="${escapeAttr(p.model)}" class="pv-model" data-id="${p.id}" placeholder="gpt-4, claude-3, ..."></td>
+        <td><input type="password" value="${escapeAttr(p.apiKey)}" class="pv-apikey" data-id="${p.id}" placeholder="sk-..."></td>
+        <td style="font-size:9px;color:${p.supportsFC === true ? 'var(--success)' : p.supportsFC === 'auto' ? 'var(--accent)' : 'var(--text-muted)'}">${p.supportsFC === true ? '✓' : p.supportsFC === 'auto' ? '?' : '✕'}</td>
+        <td><button class="tb-btn pv-remove" data-id="${p.id}" style="color:var(--error);font-size:9px" title="Remove">✕</button></td>
+      `;
+      providerTableBody.appendChild(tr);
+    });
+
+    // Radio change → set active
+    providerTableBody.querySelectorAll('.provider-radio').forEach(r => {
+      r.onchange = function() {
+        api.setActiveProvider(this.value);
+        loadProviders();
+      };
+    });
+
+    // Inline edit → update
+    const onEdit = (cls, field) => {
+      providerTableBody.querySelectorAll('.' + cls).forEach(el => {
+        el.onchange = function() {
+          api.updateProvider(this.dataset.id, { [field]: this.value });
+          loadProviders();
+        };
+      });
+    };
+    onEdit('pv-name', 'name');
+    onEdit('pv-endpoint', 'endpoint');
+    onEdit('pv-model', 'model');
+    onEdit('pv-apikey', 'apiKey');
+
+    // Remove
+    providerTableBody.querySelectorAll('.pv-remove').forEach(btn => {
+      btn.onclick = function() {
+        api.removeProvider(this.dataset.id);
+        loadProviders();
+      };
+    });
+  }
+
+  function escapeAttr(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  $('#addProviderBtn').onclick = async () => {
+    const newProv = {
+      id: crypto.randomUUID(),
+      name: 'New Provider',
+      endpoint: 'http://localhost:11434/v1',
+      model: '',
+      apiKey: '',
+      isActive: false,
+      supportsFC: 'auto',
+      maxTokens: 4096,
+      temperature: 0.7,
+      order: Date.now()
+    };
+    await api.addProvider(newProv);
+    loadProviders();
+  };
+
   // ─── Window controls ───
   $('#btnMinimize').onclick = () => api.minimize();
   $('#btnMaximize').onclick = () => api.maximize();
@@ -35,6 +235,7 @@
     if (el) el.classList.add('active');
   }
 
+  $('#navFiles').onclick = () => { navigate('files'); loadFileTree(); };
   $('#navChat').onclick = () => navigate('chat');
   $('#navSettings').onclick = () => navigate('settings');
 
@@ -48,6 +249,7 @@
     applyTheme(data.themeVars);
     populateSettings(data.settings);
     loadHistory(data.history || []);
+    renderProviderTable();
     if (data.providers && data.providers.length > 0 && data.providers.some(p => p.isActive)) {
       if (onboardingEl) onboardingEl.style.display = 'none';
     }
@@ -139,6 +341,7 @@
   function populateSettings(s) {
     fontSizeRange.value = s.fontSize || 13;
     fontSizeLabel.textContent = (s.fontSize || 13) + 'px';
+    if (workspacePathEl) workspacePathEl.value = s.workspacePath || '';
     tempRange.value = (s.temperature || 0.7) * 100;
     tempLabel.textContent = (s.temperature || 0.7).toFixed(1);
     $('#maxTokens').value = s.maxTokens || 4096;
@@ -335,6 +538,31 @@
 
   api.onAgentState((state) => {
     setStatus(state);
+  });
+
+  // ─── Ask User ───
+  api.onAskUser((data) => {
+    const answer = prompt('OmriCode: ' + data.question);
+    api.resolveUserPrompt(data.id, answer || '');
+  });
+
+  // ─── Clear chat ───
+  api.onClear(() => {
+    messagesEl.innerHTML = '';
+    currentAssistantId = null;
+    if (onboardingEl) onboardingEl.style.display = 'none';
+  });
+
+  // ─── Reset ───
+  api.onReset(() => {
+    messagesEl.innerHTML = '';
+    currentAssistantId = null;
+    isProcessing = false;
+    sendBtn.disabled = false;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    setStatus('idle');
+    if (onboardingEl) onboardingEl.style.display = 'block';
   });
 
   // Focus input

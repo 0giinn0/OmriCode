@@ -13,6 +13,8 @@ interface AgentCallbacks {
   onDone?: (content?: string) => void;
   onError?: (err: string) => void;
   onStateChange?: (state: string) => void;
+  onClear?: () => void;
+  onReset?: () => void;
 }
 
 export class AgentLoop {
@@ -35,6 +37,13 @@ export class AgentLoop {
     endpoint: string; model: string; apiKey: string;
     maxTokens: number; temperature: number; supportsFC: boolean | 'auto'
   }): Promise<void> {
+    // Check for slash commands on the last user message
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'user' && lastMsg.content.startsWith('/')) {
+      this.handleSlashCommand(lastMsg.content);
+      return;
+    }
+
     this.abortController = new AbortController();
     this.callbacks.onStateChange?.('thinking');
 
@@ -154,6 +163,91 @@ export class AgentLoop {
       if ((err as Error).name !== 'AbortError') this.callbacks.onError?.((err as Error).message);
     }
     this.callbacks.onStateChange?.('idle');
+  }
+
+  private handleSlashCommand(message: string): void {
+    this.callbacks.onStateChange?.('idle');
+    const parts = message.split(/\s+/);
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1).join(' ');
+
+    switch (command) {
+      case '/help':
+        this.callbacks.onChunk?.('Available commands:\n');
+        this.callbacks.onChunk?.(`  /help           List all commands\n`);
+        this.callbacks.onChunk?.(`  /clear          Clear chat history\n`);
+        this.callbacks.onChunk?.(`  /undo           Undo the last edit\n`);
+        this.callbacks.onChunk?.(`  /redo           Redo the last undo\n`);
+        this.callbacks.onChunk?.(`  /reset          Reset agent state and context\n`);
+        this.callbacks.onChunk?.(`  /diff           Show changes made in current session\n`);
+        this.callbacks.onChunk?.(`  /model <name>   Switch to a different model\n`);
+        this.callbacks.onChunk?.(`  /export         Export chat as markdown\n`);
+        break;
+
+      case '/clear':
+        this.callbacks.onClear?.();
+        this.callbacks.onChunk?.('Chat cleared.');
+        break;
+
+      case '/undo':
+        if (this.toolRegistry.undoLastEdit()) {
+          this.callbacks.onChunk?.('Undone last edit.');
+        } else {
+          this.callbacks.onChunk?.('Nothing to undo.');
+        }
+        break;
+
+      case '/redo':
+        if (this.toolRegistry.redoLastEdit()) {
+          this.callbacks.onChunk?.('Redone last undo.');
+        } else {
+          this.callbacks.onChunk?.('Nothing to redo.');
+        }
+        break;
+
+      case '/reset': {
+        this.toolRegistry.clearUndoRedo();
+        this.callbacks.onReset?.();
+        this.callbacks.onChunk?.('Agent state and context reset.');
+        break;
+      }
+
+      case '/diff': {
+        const undoStack = this.toolRegistry.getUndoStack();
+        const redoStack = this.toolRegistry.getRedoStack();
+        if (undoStack.length === 0 && redoStack.length === 0) {
+          this.callbacks.onChunk?.('No changes in current session.');
+        } else {
+          this.callbacks.onChunk?.(`Undo stack (${undoStack.length}):\n`);
+          for (const r of undoStack) {
+            this.callbacks.onChunk?.(`  [${r.timestamp}] ${r.description} — ${r.filePath}\n`);
+          }
+          this.callbacks.onChunk?.(`\nRedo stack (${redoStack.length}):\n`);
+          for (const r of redoStack) {
+            this.callbacks.onChunk?.(`  [${r.timestamp}] ${r.description} — ${r.filePath}\n`);
+          }
+        }
+        break;
+      }
+
+      case '/model':
+        if (args) {
+          this.callbacks.onChunk?.(`Switching to model: ${args}`);
+        } else {
+          this.callbacks.onChunk?.('Usage: /model <model_name>');
+        }
+        break;
+
+      case '/export':
+        this.callbacks.onChunk?.('Chat export is not yet implemented in standalone mode.');
+        break;
+
+      default:
+        this.callbacks.onChunk?.(`Unknown command: ${command}. Type /help for available commands.`);
+        break;
+    }
+
+    this.callbacks.onDone?.('');
   }
 
   cancel(): void {

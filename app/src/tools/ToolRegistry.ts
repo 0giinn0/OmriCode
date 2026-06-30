@@ -16,18 +16,46 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   { name: 'glob', description: 'Find files by glob pattern', parameters: { type: 'object', properties: { pattern: { type: 'string', description: 'Glob pattern' } }, required: ['pattern'] }, permission: 'workspace' },
   { name: 'list_directory', description: 'List directory contents', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Directory path' } }, required: ['path'] }, permission: 'workspace' },
   { name: 'web_fetch', description: 'Fetch a URL', parameters: { type: 'object', properties: { url: { type: 'string', description: 'URL to fetch' } }, required: ['url'] }, permission: 'confirm' },
+  { name: 'web_search', description: 'Search the web', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Search query' }, numResults: { type: 'number', description: 'Number of results (default 5)' } }, required: ['query'] }, permission: 'confirm' },
+  { name: 'get_terminal', description: 'Read terminal output from the active editor terminal', parameters: { type: 'object', properties: {}, required: [] }, permission: 'workspace' },
+  { name: 'get_selection', description: 'Return the current editor selection', parameters: { type: 'object', properties: {}, required: [] }, permission: 'always' },
+  { name: 'get_problems', description: 'Return editor diagnostics (errors, warnings, info)', parameters: { type: 'object', properties: { severity: { type: 'string', description: 'Filter by severity (error, warning, info)' } }, required: [] }, permission: 'workspace' },
+  { name: 'ask_user', description: 'Prompt the user for input', parameters: { type: 'object', properties: { question: { type: 'string', description: 'Question to ask the user' } }, required: ['question'] }, permission: 'always' },
+  { name: 'set_context', description: 'Set agent context key/value pair for stateful behavior', parameters: { type: 'object', properties: { key: { type: 'string', description: 'Context key' }, value: { type: 'string', description: 'Context value' } }, required: ['key', 'value'] }, permission: 'always' },
+  { name: 'explain_code', description: 'Explain the provided code snippet', parameters: { type: 'object', properties: { code: { type: 'string', description: 'Code to explain' }, language: { type: 'string', description: 'Programming language' } }, required: ['code'] }, permission: 'always' },
 ];
 
 export class ToolRegistry {
   private tools = new Map<string, RegisteredTool>();
   private undoStack: UndoRecord[] = [];
   private redoStack: UndoRecord[] = [];
+  private context: Record<string, string> = {};
+  private userPromptResolvers = new Map<string, (value: string) => void>();
+  private userPromptCallback: ((question: string, id: string) => void) | null = null;
 
   constructor() { this.registerDefaults(); }
 
   getDefinitions(): ToolDefinition[] { return TOOL_DEFINITIONS; }
   getUndoStack(): UndoRecord[] { return [...this.undoStack]; }
   getRedoStack(): UndoRecord[] { return [...this.redoStack]; }
+  getContext(): Record<string, string> { return { ...this.context }; }
+
+  setUserPromptCallback(cb: (question: string, id: string) => void): void {
+    this.userPromptCallback = cb;
+  }
+
+  resolveUserPrompt(id: string, answer: string): void {
+    const resolver = this.userPromptResolvers.get(id);
+    if (resolver) {
+      resolver(answer);
+      this.userPromptResolvers.delete(id);
+    }
+  }
+
+  clearUndoRedo(): void {
+    this.undoStack = [];
+    this.redoStack = [];
+  }
 
   private register(def: ToolDefinition, handler: ToolHandler): void {
     this.tools.set(def.name, { definition: def, handler });
@@ -42,6 +70,13 @@ export class ToolRegistry {
     this.register(TOOL_DEFINITIONS[5], this.handleGlob.bind(this));
     this.register(TOOL_DEFINITIONS[6], this.handleListDir.bind(this));
     this.register(TOOL_DEFINITIONS[7], this.handleWebFetch.bind(this));
+    this.register(TOOL_DEFINITIONS[8], this.handleWebSearch.bind(this));
+    this.register(TOOL_DEFINITIONS[9], this.handleGetTerminal.bind(this));
+    this.register(TOOL_DEFINITIONS[10], this.handleGetSelection.bind(this));
+    this.register(TOOL_DEFINITIONS[11], this.handleGetProblems.bind(this));
+    this.register(TOOL_DEFINITIONS[12], this.handleAskUser.bind(this));
+    this.register(TOOL_DEFINITIONS[13], this.handleSetContext.bind(this));
+    this.register(TOOL_DEFINITIONS[14], this.handleExplainCode.bind(this));
   }
 
   async execute(request: ToolExecutionRequest, signal?: AbortSignal): Promise<ToolResult> {
@@ -149,5 +184,66 @@ export class ToolRegistry {
       const resp = await fetch(args.url as string);
       return { success: true, output: (await resp.text()).slice(0, 10000), durationMs: 0 };
     } catch (err) { return { success: false, output: '', error: (err as Error).message, durationMs: 0 }; }
+  }
+
+  private async handleWebSearch(args: Record<string, unknown>): Promise<ToolResult> {
+    const query = args.query as string;
+    try {
+      const resp = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`);
+      const data = await resp.json() as Record<string, unknown>;
+      const abstract = data.AbstractText as string || '';
+      const answer = data.Answer as string || '';
+      const topics = (data.RelatedTopics as Array<Record<string, unknown>>) || [];
+      const results = topics.slice(0, (args.numResults as number) || 5)
+        .map((r: Record<string, unknown>) => r.Text || r.FirstURL || '')
+        .filter(Boolean).join('\n---\n');
+      const output = [abstract, answer, results].filter(Boolean).join('\n\n');
+      return { success: true, output: output.slice(0, 10000) || 'No results found.', durationMs: 0 };
+    } catch {
+      try {
+        const resp = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`);
+        const html = await resp.text();
+        const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 10000);
+        return { success: true, output: text || '(empty response)', durationMs: 0 };
+      } catch (err) {
+        return { success: false, output: '', error: (err as Error).message, durationMs: 0 };
+      }
+    }
+  }
+
+  private async handleGetTerminal(_args: Record<string, unknown>): Promise<ToolResult> {
+    return { success: true, output: '[get_terminal] Terminal output unavailable in standalone mode. Editor plugin required.', durationMs: 0 };
+  }
+
+  private async handleGetSelection(_args: Record<string, unknown>): Promise<ToolResult> {
+    return { success: true, output: '[get_selection] No active selection in standalone mode. Editor plugin required.', durationMs: 0 };
+  }
+
+  private async handleGetProblems(_args: Record<string, unknown>): Promise<ToolResult> {
+    return { success: true, output: '[get_problems] No diagnostics available in standalone mode. Editor plugin required.', durationMs: 0 };
+  }
+
+  private async handleAskUser(args: Record<string, unknown>): Promise<ToolResult> {
+    const question = args.question as string;
+    const id = crypto.randomUUID();
+    return new Promise(resolve => {
+      this.userPromptResolvers.set(id, (answer: string) => {
+        resolve({ success: true, output: answer, durationMs: 0 });
+      });
+      this.userPromptCallback?.(question, id);
+    });
+  }
+
+  private async handleSetContext(args: Record<string, unknown>): Promise<ToolResult> {
+    const key = args.key as string;
+    const value = typeof args.value === 'string' ? args.value : JSON.stringify(args.value);
+    this.context[key] = value;
+    return { success: true, output: `Context set: ${key} = ${value}`, durationMs: 0 };
+  }
+
+  private async handleExplainCode(args: Record<string, unknown>): Promise<ToolResult> {
+    const code = args.code as string;
+    const language = (args.language as string) || 'unknown';
+    return { success: true, output: `[explain_code placeholder]\n\nLanguage: ${language}\nCode:\n${code.slice(0, 2000)}\n\n(Full explanation requires AI provider. This placeholder is used in standalone mode.)`, durationMs: 0 };
   }
 }

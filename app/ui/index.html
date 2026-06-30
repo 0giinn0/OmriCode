@@ -17,6 +17,7 @@
     </div>
     <div class="titlebar-status" id="statusText">idle</div>
     <div class="titlebar-actions">
+      <button class="tb-btn" id="navFiles" title="Files">📁</button>
       <button class="tb-btn" id="navChat" title="Chat">💬</button>
       <button class="tb-btn" id="navSettings" title="Settings">⚙</button>
       <button class="tb-btn" id="btnMinimize" title="Minimize">─</button>
@@ -61,9 +62,69 @@
     </div>
   </div>
 
+  <!-- ─── PAGE: Files ─── -->
+  <div class="page split-page" id="pageFiles">
+    <div class="split-left">
+      <div class="files-header">
+        <span id="filesPathLabel" style="font-size:10px;color:var(--text-muted);padding:6px 10px;flex:1">No workspace selected</span>
+        <button class="tb-btn" id="filesRefreshBtn" title="Refresh" style="font-size:11px">↻</button>
+      </div>
+      <div class="files-tree" id="filesTree">
+        <div class="files-empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:11px">
+          Select a workspace folder in Settings to browse files.
+        </div>
+      </div>
+    </div>
+    <div class="split-divider" id="filesDivider"></div>
+    <div class="split-right" id="filePreviewPane" style="display:none;flex-direction:column">
+      <div class="files-header">
+        <span id="previewFileName" style="font-size:10px;color:var(--accent);padding:6px 10px;flex:1"></span>
+        <button class="tb-btn" id="previewCloseBtn" title="Close" style="font-size:11px">✕</button>
+      </div>
+      <pre id="filePreviewContent" style="flex:1;overflow:auto;margin:0;padding:8px 12px;font-size:10px;color:var(--text-secondary);tab-size:2;white-space:pre-wrap;word-break:break-all"></pre>
+    </div>
+  </div>
+
   <!-- ─── PAGE: Settings ─── -->
   <div class="page" id="pageSettings">
     <div class="settings-container">
+
+      <!-- Project -->
+      <div class="settings-section">
+        <h3>Project</h3>
+        <div class="setting-row">
+          <label>Workspace Folder</label>
+          <div style="display:flex;gap:4px;flex:1">
+            <input type="text" id="workspacePath" readonly style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:2px;color:var(--text);padding:3px 6px;font-family:var(--font-mono);font-size:10px">
+            <button class="btn" id="selectFolderBtn" style="white-space:nowrap">Browse</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Providers / Models / API Keys -->
+      <div class="settings-section">
+        <h3>Models & API Keys</h3>
+        <div class="provider-table-wrap">
+          <table class="provider-table" id="providerTable">
+            <thead>
+              <tr>
+                <th style="width:24px">⚡</th>
+                <th style="width:100px">Name</th>
+                <th>Endpoint</th>
+                <th style="width:100px">Model</th>
+                <th style="width:60px">API Key</th>
+                <th style="width:40px">FC</th>
+                <th style="width:24px"></th>
+              </tr>
+            </thead>
+            <tbody id="providerTableBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:6px">
+          <button class="btn" id="addProviderBtn">+ Add Provider</button>
+        </div>
+        <div style="margin-top:4px;font-size:9px;color:var(--text-muted)">FC = Function Calling support (✓ yes, ✕ no, ? auto-detect)</div>
+      </div>
 
       <!-- Theme -->
       <div class="settings-section">
@@ -111,9 +172,9 @@
         </div>
       </div>
 
-      <!-- Model -->
+      <!-- Model Defaults -->
       <div class="settings-section">
-        <h3>Model Defaults</h3>
+        <h3>Agent Defaults</h3>
         <div class="setting-row">
           <label>Max Tokens</label>
           <input type="number" id="maxTokens" min="256" max="32768" step="256">

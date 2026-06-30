@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('omricode', {
   redo: () => ipcRenderer.invoke('redo'),
   getUndoStack: () => ipcRenderer.invoke('get-undo-stack'),
 
+  // Workspace
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
+  getWorkspace: () => ipcRenderer.invoke('get-workspace'),
+
   // Misc
   notify: (title: string, body: string) => ipcRenderer.invoke('notify', title, body),
   clearHistory: () => ipcRenderer.invoke('clear-history'),

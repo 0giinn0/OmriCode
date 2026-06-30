@@ -18,6 +18,7 @@ export interface AppSettings {
   startMinimized: boolean;
   serverPort: number;
   enableServer: boolean;
+  workspacePath: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -35,6 +36,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   startMinimized: false,
   serverPort: 18427,
   enableServer: true,
+  workspacePath: '',
 };
 
 export const THEMES: Record<string, { bg: string; surface: string; surface2: string; surface3: string; text: string; textSecondary: string; textMuted: string; border: string; borderLight: string; glassBg: string }> = {
