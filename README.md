@@ -38,6 +38,8 @@ social construct. It's like having a coding partner who:
 
 **One brain. Three bodies. Zero filters. Maximum chaos.**
 
+> **⬇ Download:** [omricode.dev](https://0giinn0.github.io/OmriCode/) — Windows, macOS, Linux builds
+
 ---
 
 ◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
@@ -594,6 +596,7 @@ want. If the model answers, OmriCode delivers. No middleman. No judgment.
 **Built by:** Omer Bin Asif
 **License:** MIT — do whatever you want. Fork it. Burn it. Frame it.
 
+**Website:** https://0giinn0.github.io/OmriCode/
 **Repository:** https://github.com/0giinn0/OmriCode
 **Portfolio:** https://0giinn0.github.io/My_Portfolio/
 
