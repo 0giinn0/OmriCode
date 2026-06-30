@@ -26,14 +26,7 @@
   $('#btnMaximize').onclick = () => api.maximize();
   $('#btnClose').onclick = () => api.close();
 
-  // ─── Drag titlebar ───
-  let isDragging = false, startX, startY, startWinX, startWinY;
-  titlebar.onmousedown = (e) => {
-    if (e.target.closest('.titlebar-actions')) return;
-    isDragging = true;
-    startX = e.screenX; startY = e.screenY;
-    // Electron provides window bounds via IPC, but for simplicity we just use -webkit-app-region
-  };
+  // ─── Drag titlebar via -webkit-app-region in CSS ───
 
   // ─── Navigation ───
   function navigate(page) {

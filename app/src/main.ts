@@ -21,15 +21,15 @@ function createWindow(): void {
   const displays = screen.getPrimaryDisplay();
   const winWidth = 520;
   const winHeight = Math.min(displays.workArea.height, 800);
-  const winX = displays.workArea.x + displays.workArea.width - winWidth;
-  const winY = displays.workArea.y;
+  const winX = Math.round(displays.workArea.x + (displays.workArea.width - winWidth) / 2);
+  const winY = Math.round(displays.workArea.y + (displays.workArea.height - winHeight) / 2);
 
   mainWindow = new BrowserWindow({
     width: winWidth, height: winHeight,
     x: winX, y: winY,
-    minWidth: 320, minHeight: 480,
-    frame: false, transparent: true,
-    backgroundColor: '#00000000',
+    minWidth: 480, minHeight: 600,
+    frame: false,
+    backgroundColor: '#0a0a0a',
     icon: path.join(__dirname, '..', 'ui', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -38,10 +38,6 @@ function createWindow(): void {
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'ui', 'index.html'));
-
-  mainWindow.on('blur', () => {
-    if (settingsManager.get().minimizeToTray) mainWindow?.hide();
-  });
 
   mainWindow.on('close', (event) => {
     if (!isQuitting) { event.preventDefault(); mainWindow?.hide(); }
