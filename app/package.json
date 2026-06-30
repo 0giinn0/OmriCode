@@ -1,0 +1,57 @@
+{
+  "name": "omricode",
+  "version": "0.1.0",
+  "description": "OmriCode — Standalone AI IDE for Windows, Linux, and Mac",
+  "main": "out/main.js",
+  "scripts": {
+    "compile": "tsc -p ./tsconfig.json",
+    "start": "npm run compile && electron .",
+    "watch": "tsc -watch -p ./tsconfig.json",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:mac": "electron-builder --mac",
+    "build:all": "electron-builder --win --linux --mac"
+  },
+  "build": {
+    "appId": "com.omricode.app",
+    "productName": "OmriCode",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "ui/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "ui/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "ui/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "ui/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "typescript": "^5.9.3"
+  }
+}
