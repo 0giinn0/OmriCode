@@ -50,6 +50,7 @@
     <div class="ide-editor" id="ideEditor">
       <div class="editor-toolbar" id="editorToolbar" style="display:none">
         <button class="tb-btn" id="previewBtn" title="Toggle preview">○ Preview</button>
+        <button class="tb-btn" id="view3dBtn" title="Toggle 3D viewer">◇ 3D</button>
         <button class="tb-btn" id="shareBtn" title="Share file">⤒ Share</button>
         <span style="flex:1"></span>
         <button class="tb-btn" id="terminalToggleBtn" title="Toggle terminal">◇ Terminal</button>
@@ -85,6 +86,19 @@
           <button class="tb-btn" id="previewClose">✕</button>
         </div>
         <iframe id="previewIframe" style="flex:1;border:none;background:#fff"></iframe>
+      </div>
+      <div class="view3d-panel" id="view3dPanel" style="display:none">
+        <div class="view3d-header">
+          <span>◇ 3D Viewer</span>
+          <div class="view3d-controls">
+            <button class="tb-btn" id="view3dZoomOut" title="Zoom out">−</button>
+            <span id="view3dScale" style="font-size:9px;color:var(--text-muted);min-width:28px;text-align:center">100%</span>
+            <button class="tb-btn" id="view3dZoomIn" title="Zoom in">+</button>
+            <button class="tb-btn" id="view3dReset" title="Reset view">⊙</button>
+          </div>
+          <button class="tb-btn" id="view3dClose">✕</button>
+        </div>
+        <div id="view3dContainer" style="flex:1;min-height:0;position:relative;background:#0a0a0a"></div>
       </div>
       <div class="terminal-panel" id="terminalPanel" style="display:none">
         <div class="terminal-header">
@@ -324,6 +338,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.1/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

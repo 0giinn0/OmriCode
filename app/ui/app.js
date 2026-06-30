@@ -933,6 +933,103 @@
   };
   $('#previewUrl').onkeydown = (e) => { if (e.key === 'Enter') $('#previewGo').click(); };
 
+  // ─── Click Animation ───
+  function addClickAnimation(el) {
+    el.addEventListener('mousedown', () => el.classList.add('clicked'));
+    el.addEventListener('mouseup', () => setTimeout(() => el.classList.remove('clicked'), 150));
+    el.addEventListener('mouseleave', () => el.classList.remove('clicked'));
+  }
+  document.querySelectorAll('.tb-btn, .btn, .send-btn, .theme-circle, .accent-swatch, .welcome-card, .model-chip, .provider-option > div').forEach(addClickAnimation);
+
+  // ─── 3D Viewer ───
+  let renderer, scene, camera, threeModel, animFrame;
+  let view3dScale = 1;
+
+  function initView3d() {
+    const container = $('#view3dContainer');
+    if (!container || renderer) return;
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(4, 3, 6);
+    const ambientLight = new THREE.AmbientLight(0x404060);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(5, 10, 7);
+    scene.add(dirLight);
+    const backLight = new THREE.DirectionalLight(0x4466ff, 0.3);
+    backLight.position.set(-5, 0, -5);
+    scene.add(backLight);
+    loadDefaultModel();
+    animate();
+    window.addEventListener('resize', onView3dResize);
+  }
+
+  function loadDefaultModel() {
+    if (threeModel) { scene.remove(threeModel); threeModel.geometry.dispose(); }
+    const geo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x8888cc, metalness: 0.3, roughness: 0.6,
+      wireframe: false, emissive: 0x222244, emissiveIntensity: 0.2
+    });
+    threeModel = new THREE.Mesh(geo, mat);
+    threeModel.scale.set(view3dScale, view3dScale, view3dScale);
+    scene.add(threeModel);
+    const wire = new THREE.Mesh(
+      new THREE.TorusKnotGeometry(1.02, 0.32, 100, 16),
+      new THREE.MeshBasicMaterial({ color: 0x6666aa, wireframe: true, transparent: true, opacity: 0.15 })
+    );
+    threeModel.add(wire);
+  }
+
+  function animate() {
+    animFrame = requestAnimationFrame(animate);
+    if (threeModel) {
+      threeModel.rotation.x += 0.005;
+      threeModel.rotation.y += 0.01;
+    }
+    renderer.render(scene, camera);
+  }
+
+  function onView3dResize() {
+    const container = $('#view3dContainer');
+    if (!container || !renderer) return;
+    const w = container.clientWidth, h = container.clientHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+
+  function setView3dScale(factor) {
+    view3dScale = Math.max(0.1, Math.min(5, view3dScale * factor));
+    if (threeModel) threeModel.scale.set(view3dScale, view3dScale, view3dScale);
+    $('#view3dScale').textContent = Math.round(view3dScale * 100) + '%';
+  }
+
+  function resetView3d() {
+    view3dScale = 1;
+    if (threeModel) threeModel.scale.set(1, 1, 1);
+    if (camera) { camera.position.set(4, 3, 6); camera.lookAt(0, 0, 0); }
+    $('#view3dScale').textContent = '100%';
+  }
+
+  $('#view3dBtn').onclick = () => {
+    const panel = $('#view3dPanel');
+    if (panel.style.display !== 'none') { panel.style.display = 'none'; if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; } return; }
+    panel.style.display = 'flex';
+    if (typeof THREE !== 'undefined') initView3d();
+  };
+  $('#view3dClose').onclick = () => {
+    $('#view3dPanel').style.display = 'none';
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  };
+  $('#view3dZoomIn').onclick = () => setView3dScale(1.2);
+  $('#view3dZoomOut').onclick = () => setView3dScale(1 / 1.2);
+  $('#view3dReset').onclick = resetView3d;
+
   // ─── Share & Peer-to-Peer ───
   let peer = null, peerConnections = new Map();
   let peerId = null;

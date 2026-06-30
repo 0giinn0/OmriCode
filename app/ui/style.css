@@ -218,6 +218,18 @@ body{font-family:var(--font-mono);color:var(--text);font-size:12px;display:flex;
 
 #agentDefaults:focus{border-color:var(--accent)!important}
 
+/* ─── 3D Viewer ─── */
+.view3d-panel{display:flex;flex-direction:column;border-top:1px solid var(--border);background:#0a0a0a;flex-shrink:0;height:260px;min-height:120px}
+.view3d-header{display:flex;align-items:center;gap:6px;padding:2px 8px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.view3d-header span{font-size:9px;color:#888;letter-spacing:.1em;flex-shrink:0}
+.view3d-controls{display:flex;align-items:center;gap:2px;margin-left:auto;margin-right:8px}
+.view3d-controls .tb-btn{font-size:9px;padding:1px 5px}
+#view3dContainer canvas{display:block}
+
+/* ─── Click Animation ─── */
+.clicked{animation:click-pop 0.15s ease}
+@keyframes click-pop{0%{transform:scale(1)}40%{transform:scale(0.92)}100%{transform:scale(1)}}
+
 /* ─── Peer Sharing ─── */
 #peerConnectInput:focus{border-color:var(--accent)!important}
 .peer-item{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--text-secondary);padding:2px 4px;border-radius:var(--radius-sm);background:var(--surface-2);margin-bottom:2px}
