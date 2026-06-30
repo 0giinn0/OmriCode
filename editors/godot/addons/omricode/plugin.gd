@@ -1,7 +1,3 @@
-# ---------------------------------------------------------------
-# plugin.gd
-# OmriCode Godot Plugin — EditorPlugin entry point
-# ---------------------------------------------------------------
 @tool
 extends EditorPlugin
 
@@ -9,17 +5,13 @@ const PLUGIN_NAME := "omricode"
 const DOCK_SCENE_PATH := "res://addons/omricode/dock/omri_dock.tscn"
 
 var dock_instance: Control = null
-var agent_loop: Resource = null
-
 
 func _enter_tree() -> void:
 	name = PLUGIN_NAME
 	_add_omricode_dock()
 
-
 func _exit_tree() -> void:
 	_remove_omricode_dock()
-
 
 func _add_omricode_dock() -> void:
 	var scene: PackedScene = load(DOCK_SCENE_PATH)
@@ -33,18 +25,10 @@ func _add_omricode_dock() -> void:
 		return
 
 	dock_instance.name = "OmriCode"
-
 	add_control_to_dock(DOCK_SLOT_LEFT_UL, dock_instance)
-	_update_dock_title()
-
 
 func _remove_omricode_dock() -> void:
 	if dock_instance != null:
 		remove_control_from_docks(dock_instance)
 		dock_instance.queue_free()
 		dock_instance = null
-
-
-func _update_dock_title() -> void:
-	if dock_instance and dock_instance.has_method("set_title"):
-		dock_instance.set_title("OmriCode")

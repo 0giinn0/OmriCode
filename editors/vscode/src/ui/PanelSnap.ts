@@ -4,15 +4,7 @@
  *
  * Implements snap zones for the chat panel: right 50%, right 33%,
  * left 50%, left 33%, float (free), and auto-hide.
- *
- * Sizing is driven by CSS custom properties set on the panel container:
- *   --panel-width:  clamp(280px, var(--snap-width, 33vw), 50vw)
- *   --panel-height: clamp(100px, var(--snap-height, 50vh), 100vh)
- *
- * Snap zones are persisted in settings.json via ConfigManager.
  */
-
-import { ConfigManager } from '../config/ConfigManager';
 
 export type SnapZone =
   | 'right-50'
@@ -36,8 +28,13 @@ interface SnapState {
 }
 
 export class PanelSnap {
-  private configManager: ConfigManager;
-  private state: SnapState;
+  private state: SnapState = {
+    zone: 'right-50',
+    floatWidth: 480,
+    floatHeight: 600,
+    floatX: undefined,
+    floatY: undefined
+  };
   private onStateChange: ((state: SnapState) => void) | null = null;
 
   /** Snap zone to CSS property mapping */
@@ -112,17 +109,7 @@ export class PanelSnap {
     }
   };
 
-  constructor(configManager: ConfigManager) {
-    this.configManager = configManager;
-    const savedZone = this.configManager.getPanelSnapZone() as SnapZone;
-    this.state = {
-      zone: savedZone || 'right-50',
-      floatWidth: 480,
-      floatHeight: 600,
-      floatX: undefined,
-      floatY: undefined
-    };
-  }
+
 
   /**
    * Get current snap zone.
@@ -143,7 +130,6 @@ export class PanelSnap {
    */
   snapTo(zone: SnapZone): void {
     this.state.zone = zone;
-    this.configManager.setPanelSnapZone(zone);
     this.onStateChange?.(this.state);
   }
 
@@ -171,26 +157,22 @@ export class PanelSnap {
   /**
    * Toggle between current zone and hidden.
    */
+  private previousZone: SnapZone = 'right-50';
+
   toggleVisibility(): void {
     if (this.state.zone === 'hidden') {
-      // Restore to previous non-hidden zone
-      const previous = this.configManager.getWorkspaceState<string>('previousSnapZone') as SnapZone || 'right-50';
-      this.snapTo(previous);
+      this.snapTo(this.previousZone);
     } else {
-      this.configManager.setWorkspaceState('previousSnapZone', this.state.zone);
+      this.previousZone = this.state.zone;
       this.snapTo('hidden');
     }
   }
 
-  /**
-   * Toggle between current zone and fullscreen.
-   */
   toggleFullscreen(): void {
     if (this.state.zone === 'full') {
-      const previous = this.configManager.getWorkspaceState<string>('previousSnapZone') as SnapZone || 'right-50';
-      this.snapTo(previous);
+      this.snapTo(this.previousZone);
     } else {
-      this.configManager.setWorkspaceState('previousSnapZone', this.state.zone);
+      this.previousZone = this.state.zone;
       this.snapTo('full');
     }
   }

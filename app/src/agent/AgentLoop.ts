@@ -1,16 +1,16 @@
-import { ProviderMessage } from '../types/provider';
-import { ToolDefinition } from '../types/tool';
+import { ProviderMessage, ProviderChunk, ProviderToolCall } from '../types/provider';
+import { ToolDefinition, ToolExecutionRequest, ToolResult } from '../types/tool';
 import { ProviderGateway } from '../providers/ProviderGateway';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { SearchReplaceParser } from '../tools/SearchReplaceParser';
-import { ProviderChunk } from '../types/provider';
-import { ToolExecutionRequest } from '../types/tool';
+
+export type ExternalExecutor = (call: ToolExecutionRequest) => Promise<ToolResult | null>;
 
 interface AgentCallbacks {
   onChunk?: (chunk: string) => void;
   onToolCall?: (call: ToolExecutionRequest) => void;
   onToolResult?: (result: unknown) => void;
-  onDone?: () => void;
+  onDone?: (content?: string) => void;
   onError?: (err: string) => void;
   onStateChange?: (state: string) => void;
 }
@@ -19,6 +19,7 @@ export class AgentLoop {
   private providerGateway: ProviderGateway;
   private toolRegistry: ToolRegistry;
   private callbacks: AgentCallbacks = {};
+  private externalExecutor: ExternalExecutor | null = null;
   private abortController: AbortController | null = null;
   private messageIdCounter = 0;
 
@@ -28,8 +29,12 @@ export class AgentLoop {
   }
 
   setCallbacks(cbs: AgentCallbacks): void { this.callbacks = cbs; }
+  setExternalExecutor(executor: ExternalExecutor | null): void { this.externalExecutor = executor; }
 
-  async processMessage(messages: ProviderMessage[], providerRow: { endpoint: string; model: string; apiKey: string; maxTokens: number; temperature: number; supportsFC: boolean | 'auto' }): Promise<void> {
+  async processMessage(messages: ProviderMessage[], providerRow: {
+    endpoint: string; model: string; apiKey: string;
+    maxTokens: number; temperature: number; supportsFC: boolean | 'auto'
+  }): Promise<void> {
     this.abortController = new AbortController();
     this.callbacks.onStateChange?.('thinking');
 
@@ -38,20 +43,85 @@ export class AgentLoop {
       ...providerRow
     });
     const tools = this.toolRegistry.getDefinitions();
-    const messageId = `msg_${++this.messageIdCounter}`;
 
     try {
-      const chunks: ProviderChunk[] = [];
+      const toolCallAccumulators = new Map<string, ProviderToolCall>();
+
+      let fullResponseText = '';
+
       for await (const chunk of provider.sendMessage(messages, tools, this.abortController.signal)) {
-        chunks.push(chunk);
-        if (chunk.type === 'text') this.callbacks.onChunk?.(chunk.content || '');
-        if (chunk.type === 'error') { this.callbacks.onError?.(chunk.error || 'Unknown error'); return; }
-        if (chunk.type === 'done') break;
+        if (chunk.type === 'text') {
+          fullResponseText += chunk.content || '';
+          this.callbacks.onChunk?.(chunk.content || '');
+        } else if (chunk.type === 'tool_call' && chunk.tool_call) {
+          const tc = chunk.tool_call;
+          const existing = toolCallAccumulators.get(tc.id) || { id: tc.id, type: 'function' as const, function: { name: '', arguments: '' } };
+          existing.function.name += tc.function.name;
+          existing.function.arguments += tc.function.arguments;
+          toolCallAccumulators.set(tc.id, existing);
+        } else if (chunk.type === 'error') {
+          this.callbacks.onError?.(chunk.error || 'Unknown error');
+          return;
+        } else if (chunk.type === 'done') {
+          break;
+        }
       }
 
-      // Check for SEARCH/REPLACE blocks in the response
-      const fullText = chunks.filter(c => c.type === 'text').map(c => c.content).join('');
-      const blocks = SearchReplaceParser.parse(fullText);
+      // Execute accumulated tool calls
+      if (toolCallAccumulators.size > 0) {
+        this.callbacks.onStateChange?.('executing');
+        const toolCalls = Array.from(toolCallAccumulators.values());
+
+        for (const tc of toolCalls) {
+          let args: Record<string, unknown> = {};
+          try { args = JSON.parse(tc.function.arguments); } catch { args = {}; }
+
+          const execReq: ToolExecutionRequest = {
+            id: tc.id, name: tc.function.name,
+            arguments: args,
+            argumentsRaw: tc.function.arguments,
+            source: 'function_call'
+          };
+
+          this.callbacks.onToolCall?.(execReq);
+
+          let result: ToolResult | null = null;
+
+          // Try external executor first (editor-specific tools)
+          if (this.externalExecutor) {
+            result = await this.externalExecutor(execReq);
+          }
+
+          // If not handled externally, execute locally
+          if (!result) {
+            result = await this.toolRegistry.execute(execReq, this.abortController.signal);
+          }
+
+          this.callbacks.onToolResult?.(result);
+
+          // Feed result back for multi-turn tool use
+          messages.push({
+            role: 'tool',
+            content: JSON.stringify(result),
+            tool_call_id: tc.id,
+            name: tc.function.name
+          });
+        }
+
+        // Continue the conversation with tool results
+        if (toolCallAccumulators.size > 0) {
+          this.callbacks.onStateChange?.('thinking');
+          for await (const chunk of provider.sendMessage(messages, tools, this.abortController.signal)) {
+            if (chunk.type === 'text') this.callbacks.onChunk?.(chunk.content || '');
+            else if (chunk.type === 'done') break;
+            else if (chunk.type === 'error') { this.callbacks.onError?.(chunk.error || 'Unknown error'); return; }
+          }
+        }
+        this.callbacks.onStateChange?.('idle');
+      }
+
+      // Check for SEARCH/REPLACE blocks in the full response
+      const blocks = SearchReplaceParser.parse(fullResponseText);
       if (blocks.length > 0) {
         this.callbacks.onStateChange?.('executing');
         for (const block of blocks) {
@@ -63,13 +133,23 @@ export class AgentLoop {
             source: 'search_replace'
           };
           this.callbacks.onToolCall?.(execReq);
-          const result = await this.toolRegistry.execute(execReq, this.abortController.signal);
+
+          let result: ToolResult | null = null;
+
+          if (this.externalExecutor) {
+            result = await this.externalExecutor(execReq);
+          }
+
+          if (!result) {
+            result = await this.toolRegistry.execute(execReq, this.abortController.signal);
+          }
+
           this.callbacks.onToolResult?.(result);
         }
         this.callbacks.onStateChange?.('idle');
       }
 
-      this.callbacks.onDone?.();
+      this.callbacks.onDone?.(fullResponseText);
     } catch (err) {
       if ((err as Error).name !== 'AbortError') this.callbacks.onError?.((err as Error).message);
     }

@@ -1,23 +1,13 @@
-"""Chat panel UI for OmriCode AI add-on.
-
-Provides a 3D View sidebar panel with chat log, input field, provider
-selection, connection testing, and send/cancel controls.  Uses a dark
-theme that matches the OmriCode portfolio aesthetic.
-"""
+"""Chat panel UI for OmriCode AI add-on - thin client for OmriCode desktop app."""
 
 import textwrap
-
 import bpy
 from bpy.types import Operator, Panel
-
-
-# -------------------------------------------------------------------
-# Operators
-# -------------------------------------------------------------------
+from .. import OmriCodeAppClient
 
 
 class OMRICODE_OT_send_message(Operator):
-    """Send the current input text to the agent loop for processing."""
+    """Send the current input text to the OmriCode app."""
 
     bl_idname = "omricode.send_message"
     bl_label = "Send"
@@ -33,199 +23,96 @@ class OMRICODE_OT_send_message(Operator):
             self.report({"WARNING"}, "Session already in progress")
             return {"CANCELLED"}
 
-        # Append user message to chat log
         _append_chat(state, f"User: {text}")
         state.input_text = ""
         state.status_text = "Thinking..."
         state.session_active = True
 
-        # Run the agent loop in a background thread
         import threading
 
-        cfg = context.scene.omricode_provider
-
         def _worker():
+            import bpy
             try:
-                from ..agent.agent_loop import OmriCodeAgentLoop
+                response = OmriCodeAppClient.send_message(text)
+                bpy.app.timers.register(
+                    lambda: _on_response(state, response),
+                    first_interval=0.01
+                )
+            except Exception as e:
+                bpy.app.timers.register(
+                    lambda: _on_error(state, str(e)),
+                    first_interval=0.01
+                )
 
-                loop = OmriCodeAgentLoop(state, cfg)
-                loop.process_message(text)
-            except Exception as exc:
-                _append_chat(state, f"Error: {exc}")
-                state.status_text = "Error"
-            finally:
-                state.session_active = False
-
-        thread = threading.Thread(target=_worker, daemon=True)
-        thread.start()
-
+        threading.Thread(target=_worker, daemon=True).start()
         return {"FINISHED"}
 
 
-class OMRICODE_OT_test_connection(Operator):
-    """Test the connection to the configured LLM provider endpoint."""
-
-    bl_idname = "omricode.test_connection"
-    bl_label = "Test Connection"
-    bl_description = "Test LLM provider connection"
-
-    def execute(self, context):
-        cfg = context.scene.omricode_provider
-        state = context.scene.omricode_state
-        state.status_text = "Testing connection..."
-
-        import urllib.request
-        import json
-
-        try:
-            req = urllib.request.Request(
-                cfg.endpoint.rstrip("/") + "/chat/completions",
-                data=json.dumps({
-                    "model": cfg.model,
-                    "messages": [{"role": "user", "content": "ping"}],
-                    "max_tokens": 1,
-                }).encode(),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {cfg.api_key}" if cfg.api_key else "",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                if resp.status == 200:
-                    state.status_text = "Connection OK"
-                    _append_chat(state, "System: Connection successful.")
-                else:
-                    state.status_text = f"HTTP {resp.status}"
-                    _append_chat(state, f"System: Connection failed (HTTP {resp.status}).")
-        except Exception as exc:
-            state.status_text = "Connection failed"
-            _append_chat(state, f"System: Connection error — {exc}")
-
-        return {"FINISHED"}
+def _on_response(state, response: str):
+    _append_chat(state, f"Assistant: {response}")
+    state.status_text = "Ready"
+    state.session_active = False
+    return False  # one-shot timer
 
 
-class OMRICODE_OT_cancel_session(Operator):
-    """Cancel the currently running agent session."""
-
-    bl_idname = "omricode.cancel_session"
-    bl_label = "Cancel"
-    bl_description = "Cancel the running agent session"
-
-    def execute(self, context):
-        state = context.scene.omricode_state
-        if not state.session_active:
-            self.report({"WARNING"}, "No active session to cancel")
-            return {"CANCELLED"}
-
-        try:
-            from ..agent.agent_loop import OmriCodeAgentLoop
-            OmriCodeAgentLoop.cancel_all()
-        except Exception:
-            pass
-
-        state.session_active = False
-        state.status_text = "Cancelled"
-        _append_chat(state, "System: Session cancelled by user.")
-        return {"FINISHED"}
+def _on_error(state, error: str):
+    _append_chat(state, f"Error: {error}")
+    state.status_text = "Error"
+    state.session_active = False
+    return False
 
 
-# -------------------------------------------------------------------
-# Panel
-# -------------------------------------------------------------------
+class OMRICODE_PT_chat_panel(Panel):
+    """Chat panel in 3D View sidebar."""
 
-
-class VIEW3D_PT_omricode(Panel):
-    """OmriCode AI chat panel in the 3D View sidebar."""
-
-    bl_label = "OmriCode AI"
-    bl_idname = "VIEW3D_PT_omricode"
-    bl_category = "OmriCode"
+    bl_label = "OmriCode"
+    bl_idname = "OMRICODE_PT_chat_panel"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-
-    @staticmethod
-    def _draw_dark_box(layout, text, height=120):
-        """Draw a read-only multiline text box with dark styling."""
-        box = layout.box()
-        box.scale_y = 1.0
-        col = box.column(align=True)
-        # Approximate line count based on height
-        lines = max(3, height // 18)
-        for _ in range(lines):
-            row = col.row(align=True)
-            row.label(text="")
-
-        # Use a label that shows the actual chat content
-        # We overlay by clearing the dummy rows and using a single label
-        # Since we cannot nest rows, just use a single text block
-        # Better approach: use a template with a text editor read-only
-        return box
+    bl_category = "OmriCode"
 
     def draw(self, context):
-        state = context.scene.omricode_state
-        cfg = context.scene.omricode_provider
         layout = self.layout
+        state = context.scene.omricode_state
 
-        # ── Chat log ──────────────────────────────────────────────
+        # Connection status
         box = layout.box()
-        col = box.column(align=True)
-        chat = state.chat_log or ""
-        # Split into lines and show last ~20
-        lines = chat.split("\n")
-        visible = lines[-80:] if len(lines) > 80 else lines
-        for line in visible:
-            # Wrap long lines
-            wrapped = textwrap.wrap(line, width=72)
-            for wl in wrapped:
-                row = col.row(align=True)
-                row.scale_y = 0.85
-                row.label(text=wl or " ")
-
-        layout.separator(factor=0.5)
-
-        # ── Input field ───────────────────────────────────────────
-        row = layout.row(align=True)
-        row.prop(state, "input_text", text="", emboss=True)
-        send_op = row.operator("omricode.send_message", text="", icon="PLAY")
-        if state.session_active:
-            send_op.enabled = False
-
-        # ── Action row ────────────────────────────────────────────
-        row = layout.row(align=True)
-        if state.session_active:
-            row.operator("omricode.cancel_session", text="Cancel", icon="CANCEL")
+        if state.connected:
+            box.label(text="● Connected", icon="CHECKBOX_HLT")
         else:
-            row.operator("omricode.send_message", text="Send", icon="PLAY")
+            box.label(text="○ Disconnected", icon="ERROR")
+            box.operator("wm.url_open", text="Launch OmriCode App",
+                         icon="URL").url = "https://github.com/0giinn0/OmriCode"
 
-        row.operator("omricode.test_connection", text="Test", icon="LINKED")
+        # Chat log
+        box = layout.box()
+        chat_text = _get_chat_text(state)
+        for line in chat_text.split("\n"):
+            box.label(text=textwrap.shorten(line, width=60, placeholder="..."))
 
-        layout.separator(factor=0.5)
+        # Status
+        layout.label(text=f"Status: {state.status_text}")
 
-        # ── Provider config ───────────────────────────────────────
-        col = layout.column(align=True)
-        col.prop(cfg, "provider_name", text="Provider")
-        col.prop(cfg, "model", text="Model")
-
-        # ── Status ────────────────────────────────────────────────
-        layout.separator(factor=0.5)
+        # Input
+        layout.prop(state, "input_text", text="")
         row = layout.row(align=True)
-        row.label(text="Status:")
-        row.label(text=state.status_text or "Ready")
+        row.operator("omricode.send_message", text="Send", icon="PLAY")
+        if state.session_active:
+            row.enabled = False
 
 
-# -------------------------------------------------------------------
-# Internal helpers
-# -------------------------------------------------------------------
+# ─── Chat history helpers using Blender's text datablock ───
+
+CHAT_TEXT_NAME = "omricode_chat_log"
 
 
-def _append_chat(state, text: str) -> None:
-    """Append a line to the chat log, keeping total length reasonable."""
-    MAX_LOG = 32000
-    current = state.chat_log or ""
-    if len(current) + len(text) + 1 > MAX_LOG:
-        # Drop oldest quarter
-        lines = current.split("\n")
-        lines = lines[len(lines) // 4:]
-        current = "\n".join(lines)
-    state.chat_log = current + "\n" + text if current else text
+def _get_chat_text(state) -> str:
+    text_block = bpy.data.texts.get(CHAT_TEXT_NAME)
+    return text_block.as_string() if text_block else ""
+
+
+def _append_chat(state, line: str):
+    text_block = bpy.data.texts.get(CHAT_TEXT_NAME)
+    if not text_block:
+        text_block = bpy.data.texts.new(CHAT_TEXT_NAME)
+    text_block.write(line + "\n")
