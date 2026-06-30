@@ -32,8 +32,18 @@ export class ToolRegistry {
   private context: Record<string, string> = {};
   private userPromptResolvers = new Map<string, (value: string) => void>();
   private userPromptCallback: ((question: string, id: string) => void) | null = null;
+  private workspacePath = '';
 
   constructor() { this.registerDefaults(); }
+
+  setWorkspacePath(wp: string): void { this.workspacePath = wp; }
+  getWorkspacePath(): string { return this.workspacePath; }
+
+  private resolvePath(p: string): string {
+    if (!p) return this.workspacePath || process.cwd();
+    if (path.isAbsolute(p)) return p;
+    return path.join(this.workspacePath || process.cwd(), p);
+  }
 
   getDefinitions(): ToolDefinition[] { return TOOL_DEFINITIONS; }
   getUndoStack(): UndoRecord[] { return [...this.undoStack]; }
@@ -107,12 +117,14 @@ export class ToolRegistry {
   }
 
   private async handleReadFile(args: Record<string, unknown>): Promise<ToolResult> {
-    try { return { success: true, output: fs.readFileSync(args.filePath as string, 'utf-8'), durationMs: 0 }; }
-    catch (err) { return { success: false, output: '', error: (err as Error).message, durationMs: 0 }; }
+    try {
+      const fp = this.resolvePath(args.filePath as string);
+      return { success: true, output: fs.readFileSync(fp, 'utf-8'), durationMs: 0 };
+    } catch (err) { return { success: false, output: '', error: (err as Error).message, durationMs: 0 }; }
   }
 
   private async handleWriteFile(args: Record<string, unknown>): Promise<ToolResult> {
-    const fp = args.filePath as string;
+    const fp = this.resolvePath(args.filePath as string);
     const content = args.content as string;
     try {
       if (fs.existsSync(fp)) this.undoStack.push({ timestamp: new Date().toISOString(), filePath: fp, originalContent: fs.readFileSync(fp, 'utf-8'), newContent: content, toolExecutionId: crypto.randomUUID(), description: `Write ${path.basename(fp)}` });
@@ -122,7 +134,7 @@ export class ToolRegistry {
   }
 
   private async handleEditFile(args: Record<string, unknown>): Promise<ToolResult> {
-    const fp = args.filePath as string;
+    const fp = this.resolvePath(args.filePath as string);
     const search = args.searchText as string;
     const replace = args.replaceText as string;
     try {
@@ -148,6 +160,7 @@ export class ToolRegistry {
     try {
       const regex = new RegExp(args.pattern as string);
       const results: string[] = [];
+      const root = this.workspacePath || process.cwd();
       const walkDir = (d: string): void => {
         for (const e of fs.readdirSync(d, { withFileTypes: true })) {
           if (e.name.startsWith('.') || e.name === 'node_modules') continue;
@@ -159,7 +172,7 @@ export class ToolRegistry {
           }
         }
       };
-      walkDir(process.cwd());
+      walkDir(root);
       return { success: true, output: results.length > 0 ? results.join('\n') : 'No matches.', durationMs: 0 };
     } catch (err) { return { success: false, output: '', error: (err as Error).message, durationMs: 0 }; }
   }
@@ -167,14 +180,16 @@ export class ToolRegistry {
   private async handleGlob(args: Record<string, unknown>): Promise<ToolResult> {
     try {
       const glob = require('glob');
-      const files = await glob.Glob(args.pattern as string, { cwd: process.cwd(), nodir: true });
+      const root = this.workspacePath || process.cwd();
+      const files = await glob.Glob(args.pattern as string, { cwd: root, nodir: true });
       return { success: true, output: files.join('\n') || 'No matches.', durationMs: 0 };
     } catch (err) { return { success: false, output: '', error: (err as Error).message, durationMs: 0 }; }
   }
 
   private handleListDir(args: Record<string, unknown>): ToolResult {
     try {
-      const entries = fs.readdirSync(args.path as string, { withFileTypes: true });
+      const dp = this.resolvePath(args.path as string || '.');
+      const entries = fs.readdirSync(dp, { withFileTypes: true });
       return { success: true, output: entries.map(e => e.isDirectory() ? `${e.name}/` : e.name).join('\n'), durationMs: 0 };
     } catch (err) { return { success: false, output: '', error: (err as Error).message, durationMs: 0 }; }
   }

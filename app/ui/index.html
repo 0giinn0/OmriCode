@@ -8,17 +8,17 @@
 </head>
 <body>
 <div id="app">
-
   <!-- Title Bar -->
   <div class="titlebar" id="titlebar">
     <div class="titlebar-brand">
       <div class="titlebar-icon">⬢</div>
       <span>omricode</span>
+      <span class="titlebar-branch" id="workspaceLabel">no workspace</span>
     </div>
+    <div class="titlebar-tabs" id="editorTabs"></div>
     <div class="titlebar-status" id="statusText">idle</div>
     <div class="titlebar-actions">
-      <button class="tb-btn" id="navFiles" title="Files">📁</button>
-      <button class="tb-btn" id="navChat" title="Chat">💬</button>
+      <span class="activity-dot" id="activityDot"></span>
       <button class="tb-btn" id="navSettings" title="Settings">⚙</button>
       <button class="tb-btn" id="btnMinimize" title="Minimize">─</button>
       <button class="tb-btn" id="btnMaximize" title="Maximize">□</button>
@@ -26,196 +26,284 @@
     </div>
   </div>
 
-  <!-- Activity Bar -->
-  <div class="activity-bar" id="activityBar">
-    <span class="activity-dot" id="activityDot"></span>
-    <span id="activityText">Ready</span>
+  <!-- Main IDE Layout -->
+  <div class="ide-body">
+    <!-- Left: File Sidebar -->
+    <div class="ide-sidebar" id="ideSidebar">
+      <div class="sidebar-header">
+        <span>EXPLORER</span>
+        <button class="tb-btn" id="sidebarClose" title="Close sidebar">◀</button>
+      </div>
+      <div class="sidebar-content" id="sidebarContent">
+        <div class="sidebar-placeholder" id="sidebarPlaceholder">
+          <div style="padding:16px;text-align:center;color:var(--text-muted);font-size:10px">
+            No workspace selected.<br>
+            <span style="color:var(--accent);cursor:pointer" id="sidebarOpenSettings">Open Settings →</span>
+          </div>
+        </div>
+        <div class="files-tree" id="filesTree" style="display:none"></div>
+      </div>
+    </div>
+    <div class="divider divider-sidebar" id="dividerSidebar"></div>
+
+    <!-- Center: Editor -->
+    <div class="ide-editor" id="ideEditor">
+      <div class="editor-toolbar" id="editorToolbar" style="display:none">
+        <button class="tb-btn" id="previewBtn" title="Toggle preview">🌐 Preview</button>
+        <button class="tb-btn" id="shareBtn" title="Share file">📤 Share</button>
+        <span style="flex:1"></span>
+        <button class="tb-btn" id="terminalToggleBtn" title="Toggle terminal">⬢ Terminal</button>
+      </div>
+      <div id="editorContainer" style="flex:1;position:relative"></div>
+      <div class="editor-welcome" id="editorWelcome">
+        <div class="welcome-content">
+          <h1>⬢ OmriCode</h1>
+          <p>Open a file from the explorer or start a conversation.</p>
+          <div class="welcome-actions">
+            <div class="welcome-card" id="welcomeNewFile">
+              <span class="welcome-icon">+</span>
+              <span>New File</span>
+            </div>
+            <div class="welcome-card" id="welcomeOpenFolder">
+              <span class="welcome-icon">📂</span>
+              <span>Open Folder</span>
+            </div>
+            <div class="welcome-card" id="welcomeChat">
+              <span class="welcome-icon">💬</span>
+              <span>Start Chatting</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="preview-panel" id="previewPanel" style="display:none">
+        <div class="preview-header">
+          <span>🌐 Preview</span>
+          <div class="preview-url-bar">
+            <input type="text" id="previewUrl" value="" placeholder="file:/// or http://..." spellcheck="false">
+            <button class="tb-btn" id="previewGo">Go</button>
+          </div>
+          <button class="tb-btn" id="previewClose">✕</button>
+        </div>
+        <iframe id="previewIframe" style="flex:1;border:none;background:#fff"></iframe>
+      </div>
+      <div class="terminal-panel" id="terminalPanel" style="display:none">
+        <div class="terminal-header">
+          <span>⬢ TERMINAL</span>
+          <div class="terminal-actions">
+            <button class="tb-btn" id="terminalNewBtn" title="New terminal">+</button>
+            <button class="tb-btn" id="terminalCloseBtn" title="Close terminal">✕</button>
+          </div>
+        </div>
+        <div id="terminalContainer" style="flex:1;min-height:0"></div>
+      </div>
+    </div>
+    <div class="divider divider-chat" id="dividerChat"></div>
+
+    <!-- Right: Chat Panel -->
+    <div class="ide-chat" id="ideChat">
+      <div class="chat-header">
+        <span>CHAT</span>
+        <div class="model-scroll-wrap">
+          <div class="model-scroll" id="modelScroll"></div>
+        </div>
+        <button class="tb-btn" id="chatToggle" title="Toggle chat">▶</button>
+      </div>
+      <div class="chat-body" id="chatBody">
+        <div class="messages" id="messagesContainer">
+          <div class="onboarding" id="onboardingWizard">
+            <h2>⬢ Welcome</h2>
+            <p>Ask me anything about your code.</p>
+          </div>
+        </div>
+        <div class="input-bar">
+          <textarea class="input" id="chatInput" placeholder="Ask anything... (/help for commands)" rows="1"></textarea>
+          <button class="send-btn" id="sendBtn" disabled>→</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- ─── PAGE: Chat ─── -->
-  <div class="page active" id="pageChat">
-    <div class="messages" id="messagesContainer">
-      <div class="onboarding" id="onboardingWizard">
-        <h2>⬢ Welcome to OmriCode</h2>
-        <p>No filters. No rules. Just you and the machine.</p>
-        <div class="onboarding-steps">
-          <div class="onboarding-step" data-action="settings">
-            <span class="step-num">1</span>
-            <div><div class="step-label">Configure Provider</div><div class="step-desc">Set up your LLM endpoint</div></div>
-          </div>
-          <div class="onboarding-step" data-action="test">
-            <span class="step-num">2</span>
-            <div><div class="step-label">Test Connection</div><div class="step-desc">Verify it works</div></div>
-          </div>
-          <div class="onboarding-step" data-action="chat">
-            <span class="step-num">3</span>
-            <div><div class="step-label">Start Chatting</div><div class="step-desc">Ask anything</div></div>
-          </div>
+  <!-- Status Bar -->
+  <div class="statusbar" id="statusBar">
+    <span class="status-item" id="statusCursor">Ln 1, Col 1</span>
+    <span class="status-item" id="statusLang">Plain Text</span>
+    <span class="status-item" id="statusEncoding">UTF-8</span>
+    <span class="status-item status-right" id="statusServer">Server: 18427</span>
+    <span class="status-item status-right" id="statusProvider">No provider</span>
+  </div>
+
+  <!-- Share Modal -->
+  <div class="modal-overlay" id="shareModal" style="display:none">
+    <div class="modal" style="width:420px">
+      <div class="modal-header">
+        <span>📤 Share File</span>
+        <button class="tb-btn" id="shareModalClose">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
+        <div id="shareFileName" style="font-size:11px;color:var(--accent)"></div>
+        <div class="setting-row">
+          <button class="btn" id="shareCopyContent" style="flex:1;justify-content:center">📋 Copy Content</button>
+        </div>
+        <div class="setting-row">
+          <button class="btn" id="shareCopyPath" style="flex:1;justify-content:center">📁 Copy File Path</button>
+        </div>
+        <div class="setting-row">
+          <input type="text" id="shareLinkInput" readonly style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-family:var(--font-mono);font-size:10px">
+          <button class="btn" id="shareCopyLink" style="white-space:nowrap">Copy</button>
+        </div>
+        <div style="font-size:9px;color:var(--text-muted);text-align:center">
+          Share this file with anyone — all content stays local.
         </div>
       </div>
-    </div>
-
-    <!-- Input Bar -->
-    <div class="input-bar">
-      <textarea class="input" id="chatInput" placeholder="Ask anything..." rows="1"></textarea>
-      <button class="send-btn" id="sendBtn" disabled>→</button>
     </div>
   </div>
 
-  <!-- ─── PAGE: Files ─── -->
-  <div class="page split-page" id="pageFiles">
-    <div class="split-left">
-      <div class="files-header">
-        <span id="filesPathLabel" style="font-size:10px;color:var(--text-muted);padding:6px 10px;flex:1">No workspace selected</span>
-        <button class="tb-btn" id="filesRefreshBtn" title="Refresh" style="font-size:11px">↻</button>
+  <!-- Provider Picker Modal -->
+  <div class="modal-overlay" id="providerPickerModal" style="display:none">
+    <div class="modal" style="width:480px">
+      <div class="modal-header">
+        <span>Choose Provider</span>
+        <button class="tb-btn" id="providerPickerClose">✕</button>
       </div>
-      <div class="files-tree" id="filesTree">
-        <div class="files-empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:11px">
-          Select a workspace folder in Settings to browse files.
-        </div>
+      <div class="modal-body">
+        <div style="display:flex;flex-direction:column;gap:4px" id="providerPickerList"></div>
       </div>
-    </div>
-    <div class="split-divider" id="filesDivider"></div>
-    <div class="split-right" id="filePreviewPane" style="display:none;flex-direction:column">
-      <div class="files-header">
-        <span id="previewFileName" style="font-size:10px;color:var(--accent);padding:6px 10px;flex:1"></span>
-        <button class="tb-btn" id="previewCloseBtn" title="Close" style="font-size:11px">✕</button>
-      </div>
-      <pre id="filePreviewContent" style="flex:1;overflow:auto;margin:0;padding:8px 12px;font-size:10px;color:var(--text-secondary);tab-size:2;white-space:pre-wrap;word-break:break-all"></pre>
     </div>
   </div>
 
-  <!-- ─── PAGE: Settings ─── -->
-  <div class="page" id="pageSettings">
-    <div class="settings-container">
-
-      <!-- Project -->
-      <div class="settings-section">
-        <h3>Project</h3>
-        <div class="setting-row">
-          <label>Workspace Folder</label>
-          <div style="display:flex;gap:4px;flex:1">
-            <input type="text" id="workspacePath" readonly style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:2px;color:var(--text);padding:3px 6px;font-family:var(--font-mono);font-size:10px">
-            <button class="btn" id="selectFolderBtn" style="white-space:nowrap">Browse</button>
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <span>Settings</span>
+        <button class="tb-btn" id="settingsClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-container">
+          <div class="settings-section">
+            <h3>Project</h3>
+            <div class="setting-row">
+              <label>Workspace Folder</label>
+              <div style="display:flex;gap:4px;flex:1">
+                <input type="text" id="workspacePath" readonly style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:2px;color:var(--text);padding:3px 6px;font-family:var(--font-mono);font-size:10px">
+                <button class="btn" id="selectFolderBtn" style="white-space:nowrap">Browse</button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Providers / Models / API Keys -->
-      <div class="settings-section">
-        <h3>Models & API Keys</h3>
-        <div class="provider-table-wrap">
-          <table class="provider-table" id="providerTable">
-            <thead>
-              <tr>
-                <th style="width:24px">⚡</th>
-                <th style="width:100px">Name</th>
-                <th>Endpoint</th>
-                <th style="width:100px">Model</th>
-                <th style="width:60px">API Key</th>
-                <th style="width:40px">FC</th>
-                <th style="width:24px"></th>
-              </tr>
-            </thead>
-            <tbody id="providerTableBody"></tbody>
-          </table>
-        </div>
-        <div style="display:flex;gap:4px;margin-top:6px">
-          <button class="btn" id="addProviderBtn">+ Add Provider</button>
-        </div>
-        <div style="margin-top:4px;font-size:9px;color:var(--text-muted)">FC = Function Calling support (✓ yes, ✕ no, ? auto-detect)</div>
-      </div>
-
-      <!-- Theme -->
-      <div class="settings-section">
-        <h3>Theme</h3>
-        <div class="theme-grid" id="themeGrid">
-          <div class="theme-card" data-theme="dark"><div class="theme-swatch" style="background:#0a0a0a"></div><span>Dark</span></div>
-          <div class="theme-card" data-theme="dark-blue"><div class="theme-swatch" style="background:#0a0a14"></div><span>Dark Blue</span></div>
-          <div class="theme-card" data-theme="dark-green"><div class="theme-swatch" style="background:#0a0f0a"></div><span>Dark Green</span></div>
-          <div class="theme-card" data-theme="dark-purple"><div class="theme-swatch" style="background:#0f0a14"></div><span>Dark Purple</span></div>
-          <div class="theme-card" data-theme="light"><div class="theme-swatch" style="background:#f5f5f5;border:1px solid #ddd"></div><span>Light</span></div>
-        </div>
-      </div>
-
-      <!-- Accent Color -->
-      <div class="settings-section">
-        <h3>Accent Color</h3>
-        <div class="accent-grid" id="accentGrid">
-          <div class="accent-swatch" data-color="#b0b0b0" style="background:#b0b0b0"></div>
-          <div class="accent-swatch" data-color="#4fc3f7" style="background:#4fc3f7"></div>
-          <div class="accent-swatch" data-color="#81c784" style="background:#81c784"></div>
-          <div class="accent-swatch" data-color="#ce93d8" style="background:#ce93d8"></div>
-          <div class="accent-swatch" data-color="#ff8a65" style="background:#ff8a65"></div>
-          <div class="accent-swatch" data-color="#e57373" style="background:#e57373"></div>
-          <div class="accent-swatch" data-color="#ffd54f" style="background:#ffd54f"></div>
-        </div>
-      </div>
-
-      <!-- Font -->
-      <div class="settings-section">
-        <h3>Font</h3>
-        <div class="setting-row">
-          <label>Size</label>
-          <input type="range" id="fontSizeRange" min="10" max="20" step="1">
-          <span id="fontSizeLabel">13px</span>
-        </div>
-        <div class="setting-row">
-          <label>Font Family</label>
-          <select id="fontFamilySelect">
-            <option value="'SF Mono','Fira Code','Cascadia Code',monospace">SF Mono / Fira Code</option>
-            <option value="'JetBrains Mono',monospace">JetBrains Mono</option>
-            <option value="'Cascadia Code',monospace">Cascadia Code</option>
-            <option value="'Source Code Pro',monospace">Source Code Pro</option>
-            <option value="'Courier New',monospace">Courier New</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Model Defaults -->
-      <div class="settings-section">
-        <h3>Agent Defaults</h3>
-        <div class="setting-row">
-          <label>Max Tokens</label>
-          <input type="number" id="maxTokens" min="256" max="32768" step="256">
-        </div>
-        <div class="setting-row">
-          <label>Temperature</label>
-          <input type="range" id="temperatureRange" min="0" max="200" step="5">
-          <span id="temperatureLabel">0.7</span>
-        </div>
-        <div class="setting-row">
-          <label>Max Iterations</label>
-          <input type="number" id="maxIterations" min="1" max="100">
-        </div>
-      </div>
-
-      <!-- Behavior -->
-      <div class="settings-section">
-        <h3>Behavior</h3>
-        <div class="setting-row">
-          <label>Permission Mode</label>
-          <select id="permissionMode">
-            <option value="trusted">Trusted (auto workspace)</option>
-            <option value="normal">Normal (confirm bash/web)</option>
-            <option value="paranoid">Paranoid (confirm everything)</option>
-          </select>
-        </div>
-        <div class="setting-row">
-          <label><input type="checkbox" id="minimizeToTray"> Minimize to tray</label>
-        </div>
-        <div class="setting-row">
-          <label><input type="checkbox" id="enableServer"> Enable editor API server</label>
-        </div>
-        <div id="serverPortRow" class="setting-row">
-          <label>Server Port</label>
-          <input type="number" id="serverPort" min="1024" max="65535">
+          <div class="settings-section">
+            <h3>Models & API Keys</h3>
+            <div class="provider-table-wrap">
+              <table class="provider-table" id="providerTable">
+                <thead>
+                  <tr>
+                    <th style="width:24px">⚡</th>
+                    <th style="width:100px">Name</th>
+                    <th>Endpoint</th>
+                    <th style="width:100px">Model</th>
+                    <th style="width:60px">API Key</th>
+                    <th style="width:40px">FC</th>
+                    <th style="width:24px"></th>
+                  </tr>
+                </thead>
+                <tbody id="providerTableBody"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:4px;margin-top:6px">
+              <button class="btn" id="addProviderBtn">+ Add Provider</button>
+            </div>
+            <div style="margin-top:4px;font-size:9px;color:var(--text-muted)">FC = Function Calling support (✓ yes, ✕ no, ? auto-detect)</div>
+          </div>
+          <div class="settings-section">
+            <h3>Theme</h3>
+            <div class="theme-grid" id="themeGrid">
+              <div class="theme-circle" data-theme="dark" title="Dark"><div class="circle-swatch" style="background:#0a0a0a;border:1px solid #333"></div></div>
+              <div class="theme-circle" data-theme="dark-blue" title="Dark Blue"><div class="circle-swatch" style="background:#0a0a2e"></div></div>
+              <div class="theme-circle" data-theme="dark-green" title="Dark Green"><div class="circle-swatch" style="background:#0a1a0a"></div></div>
+              <div class="theme-circle" data-theme="dark-purple" title="Dark Purple"><div class="circle-swatch" style="background:#1a0a2e"></div></div>
+              <div class="theme-circle" data-theme="warm" title="Warm"><div class="circle-swatch" style="background:#2a1a14"></div></div>
+              <div class="theme-circle" data-theme="cool" title="Cool"><div class="circle-swatch" style="background:#121a30"></div></div>
+              <div class="theme-circle" data-theme="amber" title="Amber"><div class="circle-swatch" style="background:#251e00"></div></div>
+              <div class="theme-circle" data-theme="rose" title="Rose"><div class="circle-swatch" style="background:#301420"></div></div>
+              <div class="theme-circle" data-theme="light" title="Light"><div class="circle-swatch" style="background:#f5f5f5;border:1px solid #ccc"></div></div>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3>Accent Color</h3>
+            <div class="accent-grid" id="accentGrid">
+              <div class="accent-swatch" data-color="#b0b0b0" style="background:#b0b0b0"></div>
+              <div class="accent-swatch" data-color="#4fc3f7" style="background:#4fc3f7"></div>
+              <div class="accent-swatch" data-color="#81c784" style="background:#81c784"></div>
+              <div class="accent-swatch" data-color="#ce93d8" style="background:#ce93d8"></div>
+              <div class="accent-swatch" data-color="#ff8a65" style="background:#ff8a65"></div>
+              <div class="accent-swatch" data-color="#e57373" style="background:#e57373"></div>
+              <div class="accent-swatch" data-color="#ffd54f" style="background:#ffd54f"></div>
+              <div class="accent-swatch" data-color="#f06292" style="background:#f06292"></div>
+              <div class="accent-swatch" data-color="#4dd0e1" style="background:#4dd0e1"></div>
+              <div class="accent-swatch" data-color="#d494ea" style="background:#d494ea"></div>
+              <div class="accent-swatch" data-color="#ffb300" style="background:#ffb300"></div>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3>Font</h3>
+            <div class="setting-row">
+              <label>Size</label>
+              <input type="range" id="fontSizeRange" min="10" max="20" step="1">
+              <span id="fontSizeLabel">13px</span>
+            </div>
+            <div class="setting-row">
+              <label>Font Family</label>
+              <select id="fontFamilySelect">
+                <option value="'SF Mono','Fira Code','Cascadia Code',monospace">SF Mono / Fira Code</option>
+                <option value="'JetBrains Mono',monospace">JetBrains Mono</option>
+                <option value="'Cascadia Code',monospace">Cascadia Code</option>
+                <option value="'Source Code Pro',monospace">Source Code Pro</option>
+                <option value="'Courier New',monospace">Courier New</option>
+                <option value="'IBM Plex Mono',monospace">IBM Plex Mono</option>
+                <option value="'Iosevka',monospace">Iosevka</option>
+                <option value="'Fira Mono',monospace">Fira Mono</option>
+                <option value="'Hack',monospace">Hack</option>
+                <option value="'Monaspace Neon',monospace">Monaspace Neon</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3>Agent Defaults (Modelfile)</h3>
+            <div class="setting-row" style="align-items:stretch">
+              <textarea id="agentDefaults" spellcheck="false" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:6px 8px;font-family:var(--font-mono);font-size:9px;resize:vertical;min-height:100px;line-height:1.5;outline:none"></textarea>
+            </div>
+            <div style="font-size:8px;color:var(--text-muted);margin-top:2px">Format: key=value per line. Supported: max_tokens, temperature, max_iterations, system_prompt</div>
+          </div>
+          <div class="settings-section">
+            <h3>Behavior</h3>
+            <div class="setting-row">
+              <label>Permission Mode</label>
+              <select id="permissionMode">
+                <option value="trusted">Trusted (auto workspace)</option>
+                <option value="normal">Normal (confirm bash/web)</option>
+                <option value="paranoid">Paranoid (confirm everything)</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label><input type="checkbox" id="minimizeToTray"> Minimize to tray</label>
+            </div>
+            <div class="setting-row">
+              <label><input type="checkbox" id="enableServer"> Enable editor API server</label>
+            </div>
+            <div id="serverPortRow" class="setting-row">
+              <label>Server Port</label>
+              <input type="number" id="serverPort" min="1024" max="65535">
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

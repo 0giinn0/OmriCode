@@ -9,6 +9,7 @@ export interface ProviderRow {
   maxTokens: number;
   temperature: number;
   order: number;
+  detectedModels?: string[];
 }
 
 export interface ProviderConfig {

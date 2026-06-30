@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen, Notification, dialog, IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
+import { spawn, ChildProcess } from 'child_process';
 import { AgentLoop } from './agent/AgentLoop';
 import { ProviderGateway } from './providers/ProviderGateway';
 import { ToolRegistry } from './tools/ToolRegistry';
@@ -16,6 +17,7 @@ let providerGateway: ProviderGateway;
 let toolRegistry: ToolRegistry;
 let settingsManager: SettingsManager;
 let sessionStore: SessionStore;
+let terminalProcess: ChildProcess | null = null;
 
 function createWindow(): void {
   const displays = screen.getPrimaryDisplay();
@@ -80,10 +82,16 @@ function createTray(): void {
 app.whenReady().then(async () => {
   settingsManager = new SettingsManager();
   toolRegistry = new ToolRegistry();
+  const initSettings = settingsManager.get();
+  if (initSettings.workspacePath) toolRegistry.setWorkspacePath(initSettings.workspacePath);
   providerGateway = new ProviderGateway();
   sessionStore = new SessionStore();
 
   agentLoop = new AgentLoop(providerGateway, toolRegistry);
+
+  toolRegistry.setUserPromptCallback((question: string, id: string) => {
+    mainWindow?.webContents.send('ask-user', { question, id });
+  });
 
   agentLoop.setCallbacks({
     onChunk: (chunk) => mainWindow?.webContents.send('agent-chunk', chunk),
@@ -92,6 +100,8 @@ app.whenReady().then(async () => {
     onDone: () => mainWindow?.webContents.send('agent-done'),
     onError: (err) => mainWindow?.webContents.send('agent-error', err),
     onStateChange: (state) => mainWindow?.webContents.send('agent-state', state),
+    onClear: () => mainWindow?.webContents.send('clear'),
+    onReset: () => mainWindow?.webContents.send('reset'),
   });
 
   // Start local API server for editor plugins
@@ -141,6 +151,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle('get-settings', () => ({ settings: settingsManager.get(), themeVars: settingsManager.getThemeVars() }));
   ipcMain.handle('update-settings', (_event: IpcMainInvokeEvent, partial: Partial<AppSettings>) => {
     const updated = settingsManager.update(partial);
+    if (partial.workspacePath !== undefined) toolRegistry.setWorkspacePath(partial.workspacePath);
     mainWindow?.webContents.send('settings-updated', { settings: updated, themeVars: settingsManager.getThemeVars() });
     return updated;
   });
@@ -194,4 +205,85 @@ function registerIpcHandlers(): void {
   // Clear history
   ipcMain.handle('clear-history', () => { sessionStore.clear('chat_history'); });
 
+  // User prompt (ask_user tool)
+  ipcMain.handle('resolve-user-prompt', (_event: IpcMainInvokeEvent, id: string, answer: string) => {
+    toolRegistry.resolveUserPrompt(id, answer);
+  });
+
+  // ─── Terminal ───
+  ipcMain.handle('terminal-start', async () => {
+    if (terminalProcess) { terminalProcess.kill(); terminalProcess = null; }
+    const shell = process.platform === 'win32' ? 'cmd.exe' : (process.env.SHELL || '/bin/bash');
+    terminalProcess = spawn(shell, [], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, TERM: 'xterm-256color' },
+      windowsHide: true
+    });
+    terminalProcess.stdout?.on('data', (data: Buffer) => {
+      mainWindow?.webContents.send('terminal-output', data.toString());
+    });
+    terminalProcess.stderr?.on('data', (data: Buffer) => {
+      mainWindow?.webContents.send('terminal-output', data.toString());
+    });
+    terminalProcess.on('exit', () => {
+      terminalProcess = null;
+      mainWindow?.webContents.send('terminal-output', '\r\n\x1b[31m[process exited]\x1b[0m\r\n');
+    });
+    return { ok: true, shell };
+  });
+
+  ipcMain.handle('terminal-input', (_event: IpcMainInvokeEvent, data: string) => {
+    if (terminalProcess?.stdin?.writable) {
+      terminalProcess.stdin.write(data);
+      return { ok: true };
+    }
+    return { ok: false, error: 'No terminal' };
+  });
+
+  ipcMain.handle('terminal-resize', (_event: IpcMainInvokeEvent, cols: number, rows: number) => {
+    if (terminalProcess?.stdin?.writable) {
+      terminalProcess.stdin.write(`\x1b[8;${rows};${cols}t`);
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle('terminal-stop', () => {
+    if (terminalProcess) { terminalProcess.kill(); terminalProcess = null; }
+    return { ok: true };
+  });
+
+  // Auto-detect models for a provider
+  ipcMain.handle('detect-models', async (_event: IpcMainInvokeEvent, id: string) => {
+    const row = settingsManager.getProviders().find(p => p.id === id);
+    if (!row) return { success: false, error: 'Provider not found' };
+    const endpoint = row.endpoint.replace(/\/+$/, '');
+    const apiKey = row.apiKey;
+    try {
+      if (endpoint.includes('localhost:11434') || endpoint.includes('ollama')) {
+        // Ollama
+        const resp = await fetch(endpoint.includes('/v1') ? endpoint.replace('/v1', '/api/tags') : `${endpoint}/api/tags`);
+        const data = await resp.json() as Record<string, unknown>;
+        const models = (data.models as Array<Record<string, unknown>> || []).map((m: Record<string, unknown>) => m.name as string);
+        settingsManager.updateProvider(id, { detectedModels: models });
+        return { success: true, models };
+      } else if (endpoint.includes('anthropic')) {
+        const models = ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'];
+        settingsManager.updateProvider(id, { detectedModels: models });
+        return { success: true, models };
+      } else {
+        // OpenAI-compatible: GET /models
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+        const resp = await fetch(`${endpoint}/models`, { headers });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json() as Record<string, unknown>;
+        const models = (data.data as Array<Record<string, unknown>> || []).map((m: Record<string, unknown>) => m.id as string);
+        const detectedModels = models.slice(0, 20);
+        settingsManager.updateProvider(id, { detectedModels });
+        return { success: true, models: detectedModels };
+      }
+    } catch (err) {
+      return { success: false, error: (err as Error).message, models: [] };
+    }
+  });
 }

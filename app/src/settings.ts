@@ -4,7 +4,7 @@ import { app } from 'electron';
 import { ProviderRow } from './types/provider';
 
 export interface AppSettings {
-  theme: 'dark' | 'dark-blue' | 'dark-green' | 'dark-purple' | 'light';
+  theme: 'dark' | 'dark-blue' | 'dark-green' | 'dark-purple' | 'warm' | 'cool' | 'amber' | 'rose' | 'light';
   accentColor: string;
   fontSize: number;
   fontFamily: string;
@@ -13,6 +13,7 @@ export interface AppSettings {
   maxIterations: number;
   maxTokens: number;
   temperature: number;
+  agentDefaults: string;
   autoSnap: boolean;
   minimizeToTray: boolean;
   startMinimized: boolean;
@@ -25,12 +26,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
   accentColor: '#b0b0b0',
   fontSize: 13,
-  fontFamily: "'SF Mono','Fira Code','Cascadia Code',monospace",
+  fontFamily: "'SF Mono','Fira Code','Cascadia Code','JetBrains Mono','IBM Plex Mono',monospace",
   snapZone: 'right-50',
   permissionMode: 'normal',
   maxIterations: 25,
   maxTokens: 4096,
   temperature: 0.7,
+  agentDefaults: 'max_tokens=4096\ntemperature=0.7\nmax_iterations=25\nsystem_prompt=You are OmriCode, a helpful AI coding assistant.',
+
   autoSnap: true,
   minimizeToTray: true,
   startMinimized: false,
@@ -44,6 +47,10 @@ export const THEMES: Record<string, { bg: string; surface: string; surface2: str
   'dark-blue': { bg: '#0a0a14', surface: '#111122', surface2: '#1a1a2e', surface3: '#242440', text: '#d0d0e0', textSecondary: '#9999aa', textMuted: '#666677', border: '#222244', borderLight: '#2a2a55', glassBg: 'rgba(17,17,34,0.85)' },
   'dark-green': { bg: '#0a0f0a', surface: '#111a11', surface2: '#1a2a1a', surface3: '#243a24', text: '#d0e0d0', textSecondary: '#99aa99', textMuted: '#667766', border: '#223a22', borderLight: '#2a4a2a', glassBg: 'rgba(17,26,17,0.85)' },
   'dark-purple': { bg: '#0f0a14', surface: '#1a1122', surface2: '#2a1a3a', surface3: '#3a244a', text: '#e0d0f0', textSecondary: '#aa99bb', textMuted: '#776688', border: '#3a2244', borderLight: '#4a2a55', glassBg: 'rgba(26,17,34,0.85)' },
+  'warm': { bg: '#1a0f0a', surface: '#241510', surface2: '#2e1e18', surface3: '#382820', text: '#e0d0c0', textSecondary: '#aa8a70', textMuted: '#7a6050', border: '#3a2518', borderLight: '#4a3020', glassBg: 'rgba(26,15,10,0.85)' },
+  'cool': { bg: '#0a0e1a', surface: '#0e1425', surface2: '#121a30', surface3: '#182040', text: '#c8d8f0', textSecondary: '#7088b0', textMuted: '#506080', border: '#1a2a40', borderLight: '#1e3050', glassBg: 'rgba(10,14,26,0.85)' },
+  'amber': { bg: '#0f0b00', surface: '#1a1400', surface2: '#251e00', surface3: '#302800', text: '#ffe0a0', textSecondary: '#b89850', textMuted: '#887030', border: '#3a2e00', borderLight: '#4a3a00', glassBg: 'rgba(15,11,0,0.85)' },
+  'rose': { bg: '#1a0a10', surface: '#251018', surface2: '#301420', surface3: '#3a1a28', text: '#e8c0d0', textSecondary: '#b07090', textMuted: '#805068', border: '#3a1a2a', borderLight: '#452035', glassBg: 'rgba(26,10,16,0.85)' },
   'light': { bg: '#f5f5f5', surface: '#ffffff', surface2: '#eeeeee', surface3: '#dddddd', text: '#1a1a1a', textSecondary: '#666666', textMuted: '#999999', border: '#dddddd', borderLight: '#cccccc', glassBg: 'rgba(255,255,255,0.85)' },
 };
 

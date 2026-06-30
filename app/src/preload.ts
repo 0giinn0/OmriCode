@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('omricode', {
   removeProvider: (id: string) => ipcRenderer.invoke('remove-provider', id),
   setActiveProvider: (id: string) => ipcRenderer.invoke('set-active-provider', id),
   testProvider: (id: string) => ipcRenderer.invoke('test-provider', id),
+  detectModels: (id: string) => ipcRenderer.invoke('detect-models', id),
 
   // Agent
   sendMessage: (text: string) => ipcRenderer.invoke('send-message', text),
@@ -27,6 +28,12 @@ contextBridge.exposeInMainWorld('omricode', {
   redo: () => ipcRenderer.invoke('redo'),
   getUndoStack: () => ipcRenderer.invoke('get-undo-stack'),
 
+  // Terminal
+  terminalStart: () => ipcRenderer.invoke('terminal-start'),
+  terminalInput: (data: string) => ipcRenderer.invoke('terminal-input', data),
+  terminalResize: (cols: number, rows: number) => ipcRenderer.invoke('terminal-resize', cols, rows),
+  terminalStop: () => ipcRenderer.invoke('terminal-stop'),
+
   // Workspace
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   getWorkspace: () => ipcRenderer.invoke('get-workspace'),
@@ -34,6 +41,7 @@ contextBridge.exposeInMainWorld('omricode', {
   // Misc
   notify: (title: string, body: string) => ipcRenderer.invoke('notify', title, body),
   clearHistory: () => ipcRenderer.invoke('clear-history'),
+  resolveUserPrompt: (id: string, answer: string) => ipcRenderer.invoke('resolve-user-prompt', id, answer),
 
   // ─── Events from main ───
   onInit: (cb: (data: unknown) => void) => ipcRenderer.on('init', (_e, data) => cb(data)),
@@ -44,6 +52,10 @@ contextBridge.exposeInMainWorld('omricode', {
   onAgentDone: (cb: () => void) => ipcRenderer.on('agent-done', () => cb()),
   onAgentError: (cb: (err: string) => void) => ipcRenderer.on('agent-error', (_e, err) => cb(err)),
   onAgentState: (cb: (state: string) => void) => ipcRenderer.on('agent-state', (_e, state) => cb(state)),
+  onTerminalOutput: (cb: (data: string) => void) => ipcRenderer.on('terminal-output', (_e, data) => cb(data)),
+  onAskUser: (cb: (data: { question: string; id: string }) => void) => ipcRenderer.on('ask-user', (_e, data) => cb(data)),
+  onClear: (cb: () => void) => ipcRenderer.on('clear', () => cb()),
+  onReset: (cb: () => void) => ipcRenderer.on('reset', () => cb()),
   onNavigate: (cb: (page: string) => void) => ipcRenderer.on('navigate', (_e, page) => cb(page)),
   onWindowState: (cb: (state: string) => void) => ipcRenderer.on('window-state', (_e, state) => cb(state)),
 });
