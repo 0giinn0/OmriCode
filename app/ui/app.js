@@ -46,6 +46,7 @@
       loadFileTree();
     }
     if (providers.some(p => p.isActive)) $('#onboardingWizard').style.display = 'none';
+    initPeer();
   });
 
   api.onSettingsUpdated((data) => {
@@ -405,14 +406,14 @@
     return el ? el.querySelector('.sidebar-header, .editor-toolbar, .chat-header') : null;
   }
 
-  // Make each panel header a drag source for swapping
+  // Make each panel header a drag source for swapping (exclude chat header — it has snap)
   panelSlots.forEach((slot, idx) => {
+    if (slot.id === 'ideChat') return;
     const header = getHeaderEl(slot);
     if (!header) return;
     header.style.cursor = 'grab';
     header.addEventListener('mousedown', (e) => {
       if (e.button !== 0 || e.target.closest('button, .tb-btn, input, textarea, select')) return;
-      const bodyRect = document.querySelector('.ide-body').getBoundingClientRect();
       const targets = [];
       panelSlots.forEach((otherSlot, oIdx) => {
         if (oIdx === idx) return;
@@ -473,19 +474,18 @@
     if (aIdx === bIdx) return;
     const parent = document.querySelector('.ide-body');
     const panels = panelSlots.map(s => getPanelEl(s));
-    const children = [...parent.children];
-    const frag = document.createDocumentFragment();
-    children.forEach(child => {
-      if (child === panels[aIdx]) {
-        frag.appendChild(panels[bIdx]);
-      } else if (child === panels[bIdx]) {
-        frag.appendChild(panels[aIdx]);
-      } else {
-        frag.appendChild(child);
-      }
-    });
-    parent.innerHTML = '';
-    parent.appendChild(frag);
+    const a = panels[aIdx], b = panels[bIdx];
+    const aNext = a.nextElementSibling;
+    const bNext = b.nextElementSibling;
+    if (aIdx < bIdx) {
+      parent.insertBefore(b, a);
+      if (bNext) parent.insertBefore(a, bNext);
+      else parent.appendChild(a);
+    } else {
+      parent.insertBefore(a, b);
+      if (aNext) parent.insertBefore(b, aNext);
+      else parent.appendChild(b);
+    }
   }
 
   // ─── Keyboard shortcuts ───
@@ -751,6 +751,7 @@
     inputEl.value = ''; inputEl.style.height = 'auto'; sendBtn.disabled = true;
     if ($('#onboardingWizard')) $('#onboardingWizard').style.display = 'none';
     addBubble('user', text);
+    broadcastToPeers({ type: 'chat', content: text });
     setStatus('thinking');
     isProcessing = true;
     api.sendMessage(text);
@@ -932,17 +933,123 @@
   };
   $('#previewUrl').onkeydown = (e) => { if (e.key === 'Enter') $('#previewGo').click(); };
 
-  // ─── Share ───
+  // ─── Share & Peer-to-Peer ───
+  let peer = null, peerConnections = new Map();
+  let peerId = null;
+
+  function initPeer() {
+    if (typeof Peer === 'undefined') return;
+    peer = new Peer();
+    peer.on('open', (id) => {
+      peerId = id;
+      $('#peerIdDisplay').textContent = id;
+      $('#peerStatus').textContent = 'online';
+      $('#peerStatus').style.color = 'var(--success)';
+    });
+    peer.on('connection', (conn) => {
+      setupPeerConnection(conn);
+    });
+    peer.on('error', (err) => {
+      $('#peerIdDisplay').textContent = 'error: ' + err.type;
+      $('#peerStatus').textContent = 'offline';
+    });
+  }
+
+  function setupPeerConnection(conn) {
+    const pid = conn.peer;
+    peerConnections.set(pid, conn);
+    addPeerToList(pid);
+    conn.on('data', (data) => handlePeerData(pid, data));
+    conn.on('close', () => {
+      peerConnections.delete(pid);
+      removePeerFromList(pid);
+    });
+    // Sync current state to the new peer
+    conn.send({ type: 'sync-request' });
+  }
+
+  function handlePeerData(senderId, data) {
+    if (!data || !data.type) return;
+    switch (data.type) {
+      case 'chat':
+        addBubble('assistant', '📡 ' + senderId + ': ' + (data.content || ''));
+        break;
+      case 'file-edit':
+        if (data.path === activeTabPath && data.content !== undefined && editorModel) {
+          editorModel.setValue(data.content);
+        }
+        break;
+      case 'file-open':
+        if (data.path && data.content !== undefined) {
+          if (!openTabs.includes(data.path)) openTabs.push(data.path);
+          openFileInEditor(data.path, data.content);
+          renderEditorTabs();
+        }
+        break;
+      case 'cursor':
+        if (data.path === activeTabPath) {
+          $('#statusCursor').textContent = '📡 Peer: Ln ' + (data.line || 1) + ', Col ' + (data.col || 1);
+        }
+        break;
+      case 'sync-request':
+        // Send back open tabs and active file
+        const payload = { type: 'sync-response', tabs: openTabs, activeTab: activeTabPath };
+        const conn = peerConnections.get(senderId);
+        if (conn) conn.send(payload);
+        break;
+      case 'sync-response':
+        if (data.tabs) {
+          data.tabs.forEach(t => { if (!openTabs.includes(t)) openTabs.push(t); });
+          renderEditorTabs();
+        }
+        break;
+    }
+  }
+
+  function broadcastToPeers(msg) {
+    peerConnections.forEach((conn) => { conn.send(msg); });
+  }
+
+  function addPeerToList(pid) {
+    const list = $('#peerList');
+    if (list.querySelector(`[data-peer="${pid}"]`)) return;
+    const el = document.createElement('div');
+    el.className = 'peer-item';
+    el.dataset.peer = pid;
+    el.innerHTML = `<span style="color:var(--success)">⬢</span> ${pid} <button class="tb-btn" style="margin-left:auto;font-size:8px;padding:0 4px">✕</button>`;
+    el.querySelector('button').onclick = () => {
+      const c = peerConnections.get(pid);
+      if (c) c.close();
+      peerConnections.delete(pid);
+      el.remove();
+    };
+    list.appendChild(el);
+  }
+
+  function removePeerFromList(pid) {
+    const el = $('#peerList').querySelector(`[data-peer="${pid}"]`);
+    if (el) el.remove();
+  }
+
   function showShare() {
-    if (!activeTabPath) return;
-    const name = activeTabPath.split('\\').pop() || activeTabPath.split('/').pop();
-    $('#shareFileName').textContent = name;
-    const link = `file:///${activeTabPath.replace(/\\/g, '/')}`;
-    $('#shareLinkInput').value = link;
+    $('#peerConnectInput').value = '';
+    if (activeTabPath) {
+      const name = activeTabPath.split('\\').pop() || activeTabPath.split('/').pop();
+      $('#shareFileName').textContent = name;
+      const link = `file:///${activeTabPath.replace(/\\/g, '/')}`;
+      $('#shareLinkInput').value = link;
+    } else {
+      $('#shareFileName').textContent = '(no file open)';
+      $('#shareLinkInput').value = '';
+    }
     $('#shareModal').style.display = 'flex';
   }
+
+  // Share button + modal close
   $('#shareBtn').onclick = showShare;
   $('#shareModalClose').onclick = () => { $('#shareModal').style.display = 'none'; };
+
+  // File sharing buttons
   $('#shareCopyContent').onclick = async () => {
     if (!activeTabPath) return;
     try {
@@ -963,6 +1070,38 @@
     await navigator.clipboard.writeText($('#shareLinkInput').value);
     $('#shareCopyLink').textContent = '✓ Copied!';
     setTimeout(() => { $('#shareCopyLink').textContent = 'Copy'; }, 2000);
+  };
+
+  // Peer connection
+  $('#peerCopyId').onclick = () => {
+    if (peerId) { navigator.clipboard.writeText(peerId); $('#peerCopyId').textContent = '✓'; setTimeout(() => { $('#peerCopyId').textContent = 'Copy'; }, 2000); }
+  };
+  $('#peerConnectBtn').onclick = () => {
+    const targetId = $('#peerConnectInput').value.trim();
+    if (!targetId || !peer) return;
+    if (peerConnections.has(targetId)) { $('#peerConnectInput').value = ''; return; }
+    const conn = peer.connect(targetId, { reliable: true });
+    conn.on('open', () => {
+      setupPeerConnection(conn);
+      $('#peerConnectInput').value = '';
+    });
+    conn.on('error', () => { /* connection failed */ });
+  };
+  $('#peerConnectInput').onkeydown = (e) => { if (e.key === 'Enter') $('#peerConnectBtn').click(); };
+
+  // Wire up editor changes broadcast after Monaco loads
+  const origInitMonaco = initMonaco;
+  initMonaco = function() {
+    origInitMonaco();
+    const checkMonaco = setInterval(() => {
+      if (editor) {
+        editor.onDidChangeModelContent(() => {
+          if (!peerConnections.size || !activeTabPath || !editorModel) return;
+          broadcastToPeers({ type: 'file-edit', path: activeTabPath, content: editorModel.getValue() });
+        });
+        clearInterval(checkMonaco);
+      }
+    }, 200);
   };
 
   // ─── Show toolbar when file is open ───

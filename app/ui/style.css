@@ -217,3 +217,9 @@ body{font-family:var(--font-mono);color:var(--text);font-size:12px;display:flex;
 .accent-swatch.active{border-color:var(--text)}
 
 #agentDefaults:focus{border-color:var(--accent)!important}
+
+/* ─── Peer Sharing ─── */
+#peerConnectInput:focus{border-color:var(--accent)!important}
+.peer-item{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--text-secondary);padding:2px 4px;border-radius:var(--radius-sm);background:var(--surface-2);margin-bottom:2px}
+.peer-item button{color:var(--text-muted)}
+.peer-item button:hover{color:var(--error)}

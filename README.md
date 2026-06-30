@@ -409,6 +409,58 @@ or use Ctrl+Z / Ctrl+Shift+Z like a normal human being.
 
 ◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
 
+## 🔗 Live Share (Peer-to-Peer Collaboration)
+
+OmriCode has built-in **real-time peer-to-peer sharing** via WebRTC (PeerJS).
+No server, no accounts, no cloud — direct connection between instances.
+
+```
+  ┌──────────────────────────────────────────────┐
+  │  📤 Share & Collaborate                       │
+  ├──────────────────────────────────────────────┤
+  │  🔗 Live Share (Peer-to-Peer)                │
+  │  Your ID: omricode-f3a8a                    │  [Copy]
+  │  ┌─────────────────────────────────────┐ [Connect]
+  │  │ Paste peer ID to connect...          │
+  │  └─────────────────────────────────────┘
+  │  ⬢ omricode-x7b2c (connected)    [✕]   │
+  │  ⬢ omricode-d9f4k (connected)    [✕]   │
+  ├──────────────────────────────────────────────┤
+  │  📄 Share File                              │
+  │  [📋 Copy Content] [📁 Copy File Path]      │
+  └──────────────────────────────────────────────┘
+```
+
+### How It Works
+
+1. Open Share (`📤 Share` in the editor toolbar) — your **Peer ID** appears
+2. Send your ID to another OmriCode user (DM, email, carrier pigeon)
+3. They paste it and click **Connect** — direct WebRTC connection established
+4. Everything syncs in real-time:
+   - **Chat messages** — appear in both instances
+   - **File edits** — live-streamed as you type
+   - **Open tabs** — synced on connect
+   - **Cursor position** — visible remote cursor indicator
+
+### What It Uses
+
+| Component | Technology |
+|-----------|-----------|
+| Signalling | PeerJS cloud server (`0.peerjs.com`) |
+| Transport | WebRTC (direct P2P when possible, TURN relay when NAT'd) |
+| Encryption | DTLS-SRTP (built into WebRTC, not tunable) |
+| CDN | `peerjs@1.5.1` loaded at runtime from jsdelivr |
+
+### Limitations
+
+- Both users must have OmriCode open and connected to the internet for initial signalling
+- After the WebRTC handshake, data flows direct P2P — no relay (unless both are behind symmetric NAT)
+- No persistence — if you disconnect, history isn't synced retroactively
+
+---
+
+◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+
 ## ◆ UI Theme (Dark Mode Because We're Not Monsters)
 
 ```

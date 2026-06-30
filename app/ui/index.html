@@ -134,25 +134,44 @@
 
   <!-- Share Modal -->
   <div class="modal-overlay" id="shareModal" style="display:none">
-    <div class="modal" style="width:420px">
+    <div class="modal" style="width:480px">
       <div class="modal-header">
-        <span>📤 Share File</span>
+        <span>📤 Share & Collaborate</span>
         <button class="tb-btn" id="shareModalClose">✕</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
-        <div id="shareFileName" style="font-size:11px;color:var(--accent)"></div>
-        <div class="setting-row">
-          <button class="btn" id="shareCopyContent" style="flex:1;justify-content:center">📋 Copy Content</button>
+        <!-- Collaborative Sharing -->
+        <div class="settings-section">
+          <h3>🔗 Live Share (Peer-to-Peer)</h3>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <span style="font-size:9px;color:var(--text-muted)">Your ID:</span>
+            <span id="peerIdDisplay" style="font-size:10px;color:var(--accent);font-weight:500">connecting...</span>
+            <button class="btn" id="peerCopyId" style="font-size:8px">Copy</button>
+            <span id="peerStatus" style="font-size:8px;color:var(--text-muted);margin-left:auto">offline</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="text" id="peerConnectInput" placeholder="Paste peer ID to connect..." spellcheck="false" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:4px 8px;font-family:var(--font-mono);font-size:9px;outline:none">
+            <button class="btn" id="peerConnectBtn" style="white-space:nowrap">Connect</button>
+          </div>
+          <div id="peerList" style="display:flex;flex-direction:column;gap:2px;margin-top:6px;max-height:80px;overflow-y:auto"></div>
         </div>
-        <div class="setting-row">
-          <button class="btn" id="shareCopyPath" style="flex:1;justify-content:center">📁 Copy File Path</button>
-        </div>
-        <div class="setting-row">
-          <input type="text" id="shareLinkInput" readonly style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-family:var(--font-mono);font-size:10px">
-          <button class="btn" id="shareCopyLink" style="white-space:nowrap">Copy</button>
-        </div>
-        <div style="font-size:9px;color:var(--text-muted);text-align:center">
-          Share this file with anyone — all content stays local.
+        <!-- File Sharing -->
+        <div class="settings-section">
+          <h3>📄 Share File</h3>
+          <div id="shareFileName" style="font-size:10px;color:var(--accent);margin-bottom:4px"></div>
+          <div class="setting-row">
+            <button class="btn" id="shareCopyContent" style="flex:1;justify-content:center">📋 Copy Content</button>
+          </div>
+          <div class="setting-row">
+            <button class="btn" id="shareCopyPath" style="flex:1;justify-content:center">📁 Copy File Path</button>
+          </div>
+          <div class="setting-row">
+            <input type="text" id="shareLinkInput" readonly style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:4px 8px;font-family:var(--font-mono);font-size:9px">
+            <button class="btn" id="shareCopyLink" style="white-space:nowrap">Copy</button>
+          </div>
+          <div style="font-size:8px;color:var(--text-muted);text-align:center;margin-top:2px">
+            All content stays local. Peer-to-peer connections are end-to-end encrypted by WebRTC.
+          </div>
         </div>
       </div>
     </div>
@@ -304,6 +323,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.1/dist/peerjs.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
