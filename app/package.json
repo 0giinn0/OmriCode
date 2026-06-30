@@ -27,7 +27,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "ui/icon.png"
+      "signDlls": false,
+      "signAndEditExecutable": false
     },
     "linux": {
       "target": [
