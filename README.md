@@ -601,7 +601,7 @@ want. If the model answers, OmriCode delivers. No middleman. No judgment.
   ╔══════════════════════════════════════════════════════════════╗
   ║  "I have no idea what I'm doing, but I know I'm doing      ║
   ║   it really, really well."                                  ║
-  ║                                              — Deadpool     ║
+  ║                                              — Some guy     ║
   ║                                              (probably)     ║
   ╚══════════════════════════════════════════════════════════════╝
 ```
