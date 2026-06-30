@@ -18,6 +18,8 @@ import { OpenAIProvider } from './OpenAIProvider';
 import { AnthropicProvider } from './AnthropicProvider';
 import { LocalProvider } from './LocalProvider';
 import { CustomProvider } from './CustomProvider';
+import { OllamaProvider } from './OllamaProvider';
+import { OpenRouterProvider } from './OpenRouterProvider';
 import { ConfigManager } from '../config/ConfigManager';
 
 type ProviderConstructor = new (row: ProviderRow) => BaseProvider;
@@ -30,6 +32,8 @@ const PROVIDER_MAP: Record<string, ProviderConstructor> = {
   'openai': OpenAIProvider,
   'anthropic': AnthropicProvider,
   'local': LocalProvider,
+  'ollama': OllamaProvider,
+  'openrouter': OpenRouterProvider,
   'custom': CustomProvider
 };
 
@@ -54,7 +58,9 @@ export class ProviderGateway {
     const ep = row.endpoint.toLowerCase();
     if (ep.includes('openai.com')) return OpenAIProvider;
     if (ep.includes('anthropic.com')) return AnthropicProvider;
-    if (ep.includes('ollama') || ep.includes('11434')) return LocalProvider;
+    if (ep.includes('11434')) return LocalProvider;
+    if (ep.includes('ollama')) return OllamaProvider;
+    if (ep.includes('openrouter.ai')) return OpenRouterProvider;
     return CustomProvider;
   }
 
