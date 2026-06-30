@@ -1,0 +1,579 @@
+/**
+ * theme.css
+ * OmriCode — Glass Morph Theme (Portfolio Edition)
+ *
+ * CSS custom properties matching the Omer Bin Asif portfolio
+ * at 0giinn0.github.io/My_Portfolio. Uses frosted glass panels,
+ * dark monospace surfaces, and subtle animated borders.
+ *
+ * Properties:
+ *   --panel-width, --panel-height: controlled by PanelSnap
+ *   --font-scale: responsive sizing (0.8 to 1.1)
+ */
+
+:root {
+  /* ─── Color Palette ─── */
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface-2: #1a1a1a;
+  --surface-3: #242424;
+  --text: #d0d0d0;
+  --text-secondary: #999999;
+  --text-muted: #666666;
+  --border: #222222;
+  --border-light: #2a2a2a;
+  --accent: #b0b0b0;
+  --accent-hover: #cccccc;
+  --accent-glow: #f59e0b;
+  --error: #ff4444;
+  --success: #44cc44;
+  --warning: #ffaa00;
+
+  /* ─── Glass Morph ─── */
+  --nav-bg: rgba(10, 10, 10, 0.85);
+  --nav-border: rgba(34, 34, 34, 0.5);
+  --glass-bg: rgba(17, 17, 17, 0.85);
+  --glass-border: rgba(34, 34, 34, 0.6);
+  --glass-blur: blur(24px);
+  --glass-saturate: saturate(180%);
+
+  /* ─── Typography ─── */
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size: clamp(10px, calc(var(--panel-width, 50vw) / 40), 14px);
+  --font-scale: 1;
+
+  /* ─── Sizing (set by PanelSnap) ─── */
+  --panel-width: 50vw;
+  --panel-height: 100vh;
+  --snap-width: 50vw;
+  --bubble-gap: clamp(4px, 1vh, 12px);
+
+  /* ─── Animations ─── */
+  --spring-fast: 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-slow: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: 0.2s ease-out;
+}
+
+/* ─── Panel Container ─── */
+.omricode-panel {
+  width: var(--panel-width);
+  height: var(--panel-height);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur) var(--glass-saturate);
+  -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+  border: 1px solid var(--glass-border);
+  font-family: var(--font-mono);
+  font-size: var(--font-size);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all var(--spring-slow);
+  position: relative;
+  z-index: 1000;
+}
+
+/* ─── Header ─── */
+.omricode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(6px, 1.5vh, 14px) clamp(8px, 2vw, 16px);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.omricode-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(var(--font-size) * 0.9);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.omricode-header-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.omricode-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.omricode-header-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all var(--ease-out);
+}
+
+.omricode-header-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.omricode-header-status {
+  font-size: calc(var(--font-size) * 0.7);
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── Messages Area ─── */
+.omricode-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: clamp(6px, 1.5vh, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--bubble-gap);
+  scroll-behavior: smooth;
+}
+
+.omricode-messages::-webkit-scrollbar {
+  width: 4px;
+}
+
+.omricode-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.omricode-messages::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.omricode-messages::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+/* ─── Chat Bubble ─── */
+.omricode-bubble {
+  display: flex;
+  flex-direction: column;
+  max-width: min(85%, 800px);
+  animation: bubbleIn var(--spring-slow);
+}
+
+.omricode-bubble.user {
+  align-self: flex-end;
+}
+
+.omricode-bubble.assistant {
+  align-self: flex-start;
+}
+
+.omricode-bubble-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: calc(var(--font-size) * 0.75);
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.omricode-bubble.user .omricode-bubble-header {
+  color: var(--text);
+}
+
+.omricode-bubble.assistant .omricode-bubble-header {
+  color: var(--accent);
+}
+
+.omricode-bubble-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.omricode-bubble-body {
+  padding: clamp(6px, 1.5vh, 10px) clamp(8px, 2vw, 14px);
+  border-radius: 6px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: calc(var(--font-size) * var(--font-scale));
+}
+
+.omricode-bubble.user .omricode-bubble-body {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.omricode-bubble.assistant .omricode-bubble-body {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+.omricode-bubble-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px;
+  font-size: calc(var(--font-size) * 0.65);
+  color: var(--text-muted);
+}
+
+/* ─── Thinking Indicator ─── */
+.omricode-thinking {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  color: var(--text-muted);
+  font-size: calc(var(--font-size) * 0.8);
+}
+
+.omricode-thinking-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: thinkingPulse 1.2s ease-in-out infinite;
+}
+
+.omricode-thinking-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.omricode-thinking-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinkingPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ─── Tool Call Card ─── */
+.omricode-tool-card {
+  margin: 4px 0;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+  font-size: calc(var(--font-size) * 0.85);
+}
+
+.omricode-tool-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.omricode-tool-card-body {
+  padding: 8px 10px;
+  font-size: calc(var(--font-size) * 0.8);
+  color: var(--text-secondary);
+}
+
+.omricode-tool-card.success .omricode-tool-card-header {
+  color: var(--success);
+}
+
+.omricode-tool-card.error .omricode-tool-card-header {
+  color: var(--error);
+}
+
+/* ─── Provider Table ─── */
+.omricode-provider-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(var(--font-size) * 0.9);
+}
+
+.omricode-provider-table th {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: calc(var(--font-size) * 0.75);
+  cursor: col-resize;
+  user-select: none;
+}
+
+.omricode-provider-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.omricode-provider-table tr:hover td {
+  background: var(--surface-2);
+}
+
+.omricode-provider-table .active-row {
+  border-left: 2px solid var(--accent);
+}
+
+/* ─── Input Bar ─── */
+.omricode-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: clamp(6px, 1.5vh, 10px) clamp(8px, 2vw, 12px);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.omricode-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: calc(var(--font-size) * 0.9);
+  color: var(--text);
+  outline: none;
+  resize: none;
+  min-height: 32px;
+  max-height: 120px;
+  transition: border-color var(--ease-out);
+}
+
+.omricode-input:focus {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.omricode-input::placeholder {
+  color: var(--text-muted);
+}
+
+.omricode-send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all var(--ease-out);
+  flex-shrink: 0;
+}
+
+.omricode-send-btn:hover {
+  background: var(--surface-3);
+  border-color: var(--accent);
+}
+
+.omricode-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Activity Bar ─── */
+.omricode-activity-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px clamp(8px, 2vw, 12px);
+  border-bottom: 1px solid var(--border);
+  font-size: calc(var(--font-size) * 0.7);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-height: 20px;
+}
+
+.omricode-activity-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.omricode-activity-dot.active {
+  background: var(--accent-glow);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ─── Onboarding Wizard ─── */
+.omricode-onboarding {
+  padding: 20px;
+  text-align: center;
+}
+
+.omricode-onboarding h2 {
+  font-size: calc(var(--font-size) * 1.5);
+  font-weight: 500;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.omricode-onboarding p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.omricode-onboarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.omricode-onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--ease-out);
+}
+
+.omricode-onboarding-step:hover {
+  background: var(--surface-2);
+  border-color: var(--border-light);
+}
+
+.omricode-onboarding-step .step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.omricode-onboarding-step .step-label {
+  font-size: calc(var(--font-size) * 0.9);
+  color: var(--text);
+}
+
+.omricode-onboarding-step .step-desc {
+  font-size: calc(var(--font-size) * 0.75);
+  color: var(--text-muted);
+}
+
+/* ─── Animations ─── */
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(10px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ─── Markdown inside bubbles ─── */
+.omricode-bubble-body code {
+  background: var(--surface-3);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: calc(var(--font-size) * 0.85);
+}
+
+.omricode-bubble-body pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.omricode-bubble-body pre code {
+  background: none;
+  padding: 0;
+}
+
+/* ─── Responsive: narrow panel ─── */
+@media (max-width: 500px) {
+  .omricode-activity-bar {
+    display: none;
+  }
+
+  .omricode-tool-card-body {
+    display: none;
+  }
+
+  .omricode-bubble {
+    max-width: 95%;
+  }
+}
+
+/* ─── Responsive: very narrow ─── */
+@media (max-width: 320px) {
+  .omricode-header-status {
+    display: none;
+  }
+
+  .omricode-bubble-footer {
+    display: none;
+  }
+}

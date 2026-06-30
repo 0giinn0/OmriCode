@@ -1,0 +1,30 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - run: npm ci
+      - run: npm run package
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: editors/vscode/*.vsix
+          generate_release_notes: true
+          make_latest: true

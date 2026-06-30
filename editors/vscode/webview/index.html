@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OmriCode Chat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div class="omricode-header">
+    <div class="omricode-header-brand">
+      <div class="omricode-header-icon">⬢</div>
+      <span>omricode</span>
+    </div>
+    <div class="omricode-header-status" id="statusText">idle</div>
+    <div class="omricode-header-actions">
+      <button class="omricode-header-btn" id="btnProviders" title="Manage Providers">⚙</button>
+      <button class="omricode-header-btn" id="btnSnap" title="Toggle Snap">⇄</button>
+      <button class="omricode-header-btn" id="btnClear" title="Clear Chat">✕</button>
+    </div>
+  </div>
+  <div class="omricode-messages" id="messagesContainer"></div>
+  <div class="omricode-input-bar">
+    <textarea class="omricode-input" id="chatInput" placeholder="Ask anything... (/help for commands)" rows="1"></textarea>
+    <button class="omricode-send-btn" id="sendBtn" disabled>→</button>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

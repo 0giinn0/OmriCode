@@ -1,0 +1,35 @@
+# --- Node ---
+node_modules/
+*.js.map
+*.tsbuildinfo
+
+# --- VS Code extension output ---
+*.vsix
+out/
+dist/
+
+# --- OmriCode workspace data ---
+.omricode/
+
+# --- Environment & secrets ---
+.env
+.env.local
+*.key
+apiKey*
+
+# --- Editor temp files ---
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- Build artifacts ---
+build/
+release/
+*.zip
+
+# --- IDE ---
+.vscode/settings.json
+.idea/
+*.sublime-*

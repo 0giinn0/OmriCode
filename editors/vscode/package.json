@@ -1,0 +1,168 @@
+{
+  "name": "omricode",
+  "displayName": "OmriCode",
+  "description": "Unrestricted AI agent for VS Code, Godot, Blender. Local-first, any model, zero filters.",
+  "version": "0.1.0",
+  "publisher": "omerbinasif",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0giinn0/omricode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "copilot",
+    "llm",
+    "agent",
+    "local",
+    "uncensored",
+    "godot",
+    "blender"
+  ],
+  "activationEvents": [
+    "onCommand:omricode.openChat",
+    "onCommand:omricode.togglePanel",
+    "onCommand:omricode.explainSelection",
+    "onCommand:omricode.searchComments"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "omricode.openChat",
+        "title": "OmriCode: Open Chat"
+      },
+      {
+        "command": "omricode.togglePanel",
+        "title": "OmriCode: Toggle Panel"
+      },
+      {
+        "command": "omricode.explainSelection",
+        "title": "OmriCode: Explain Selection"
+      },
+      {
+        "command": "omricode.searchComments",
+        "title": "OmriCode: Search Comments"
+      },
+      {
+        "command": "omricode.showProviderTable",
+        "title": "OmriCode: Manage Providers"
+      },
+      {
+        "command": "omricode.undoLastEdit",
+        "title": "OmriCode: Undo Last Edit"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "omricode.openChat",
+        "key": "ctrl+shift+o",
+        "mac": "cmd+shift+o"
+      },
+      {
+        "command": "omricode.togglePanel",
+        "key": "ctrl+shift+p",
+        "mac": "cmd+shift+p"
+      },
+      {
+        "command": "omricode.explainSelection",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e"
+      },
+      {
+        "command": "omricode.searchComments",
+        "key": "ctrl+shift+f",
+        "mac": "cmd+shift+f"
+      },
+      {
+        "command": "omricode.undoLastEdit",
+        "key": "ctrl+shift+z",
+        "mac": "cmd+shift+z"
+      }
+    ],
+    "configuration": {
+      "title": "OmriCode",
+      "properties": {
+        "omricode.providers": {
+          "type": "array",
+          "default": [],
+          "description": "Array of provider configurations. Managed via the Provider Table UI."
+        },
+        "omricode.activeProviderId": {
+          "type": "string",
+          "default": "",
+          "description": "ID of the currently active provider row."
+        },
+        "omricode.permissionMode": {
+          "type": "string",
+          "enum": ["trusted", "normal", "paranoid"],
+          "default": "normal",
+          "description": "Permission profile: trusted (auto workspace), normal (confirm bash/web), paranoid (confirm every tool)."
+        },
+        "omricode.panelSnapZone": {
+          "type": "string",
+          "enum": ["right-50", "right-33", "left-50", "left-33", "float", "hidden"],
+          "default": "right-50",
+          "description": "Default snap zone for the chat panel."
+        },
+        "omricode.maxIterations": {
+          "type": "number",
+          "default": 25,
+          "description": "Maximum agent loop iterations per turn."
+        },
+        "omricode.maxTokens": {
+          "type": "number",
+          "default": 4096,
+          "description": "Maximum response tokens from the model."
+        },
+        "omricode.temperature": {
+          "type": "number",
+          "default": 0.7,
+          "description": "Model temperature for generation."
+        },
+        "omricode.codebaseRag.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable codebase RAG for context assembly."
+        },
+        "omricode.codebaseRag.chunkSize": {
+          "type": "number",
+          "default": 50,
+          "description": "Lines per chunk for codebase indexing."
+        },
+        "omricode.codebaseRag.topK": {
+          "type": "number",
+          "default": 8,
+          "description": "Number of chunks to return per query."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./tsconfig.json",
+    "watch": "tsc -watch -p ./tsconfig.json",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package --no-dependencies",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/vsce": "^2.26.0",
+    "@vscode/test-electron": "^2.3.9"
+  },
+  "dependencies": {}
+}
