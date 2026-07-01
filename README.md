@@ -14,621 +14,280 @@
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ What Is OmriCode?
 
-**OmriCode** is a fully local, unrestricted AI IDE agent that works across
-**three editors** because commitment issues are healthy and monogamy is a
-social construct. It's like having a coding partner who:
-- Never says "I can't help with that" (because there are no content filters)
-- Works offline with local models (Ollama, GGUF, your toaster running Linux)
-- Speaks three editor languages fluently (TypeScript, GDScript, Python)
+**OmriCode** is a fully local, unrestricted AI IDE — a standalone desktop app that
+runs on Windows, Linux, and macOS. Think of it as an AI coding partner who:
+
+- Never says "I can't help with that" (no content filters, no guardrails)
+- Works offline with local models (Ollama, LM Studio, your toaster running Linux)
+- Has a built-in code editor, terminal, and 3D viewer
+- Speaks to any LLM provider — local or cloud, paid or free
 - Has an undo button for when it inevitably breaks your project
 
-```
-     ╔═╗╔═╗╔═╗╦═╗╦╔╗╔╔═╗╦  ╔═╗
-     ╠═╣╠═╝╠═╣╠╦╝║║║║║ ╦║  ║╣
-     ╩ ╩╩  ╩ ╩╩╚═╩╝╚╝╚═╝╩═╝╚═╝
-```
-
-| Editor     | Language       | Files | Status              |
-|------------|----------------|-------|---------------------|
-| VS Code    | TypeScript     | 28    | ✅ Shipping (Phase 1-3) |
-| Godot 4    | GDScript       | 12    | ✅ Plug & Play (Phase 4) |
-| Blender    | Python (bpy)   | 13    | ✅ Add-on Ready (Phase 5) |
-
-**One brain. Three bodies. Zero filters. Maximum chaos.**
-
-> **⬇ Download:** [omricode.dev](https://0giinn0.github.io/OmriCode/) — Windows, macOS, Linux builds
+> **⬇ Download:** [omricode.dev](https://0giinn0.github.io/OmriCode/) — prebuilt binaries for all platforms
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ The Layout
 
-## ⬢ Architecture (The "How Does This Madness Work?" Diagram)
+OmriCode is split into three zones you can rearrange however you want:
 
-```
-                              OMRI CODE
-                         [citation needed]
-                                                                          
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           YOU (The Meatbag)                             │
-│                          Type message, hit enter, pray                  │
-└────────────────────────────┬────────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │                    AGENT LOOP (ReAct)                             │  │
-│  │  "Think → Act → Observe → Repeat until 25 iterations or I die"   │  │
-│  │                                                                   │  │
-│  │  ┌──────────┐  ┌───────────┐  ┌───────────┐  ┌───────────────┐  │  │
-│  │  │  Context  │  │  Provider │  │   Tool    │  │    Memory     │  │  │
-│  │  │ Assembler │─▶│  Gateway  │─▶│  Registry │  │  (RAG + VDB)  │  │  │
-│  │  │ (prompt + │  │ (routes   │  │ (15 tools │  │───────────────│  │  │
-│  │  │  files)   │  │  to model)│  │  + undo)  │  │• VectorStore  │  │  │
-│  │  └──────────┘  └─────┬─────┘  └─────┬─────┘  │• CodebaseRAG   │  │  │
-│  │                      │              │         │• CommentIndex  │  │  │
-│  │                      ▼              ▼         │• SessionStore  │  │  │
-│  │                ┌──────────┐  ┌──────────┐    └───────────────┘  │  │
-│  │                │  LLM     │  │ SEARCH/  │                        │  │
-│  │                │  Model   │  │ REPLACE  │                        │  │
-│  │                │(FC path) │  │(fallback)│                        │  │
-│  │                └──────────┘  └──────────┘                        │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+**Sidebar** (left) — Your file tree and workspace navigation. Drag its divider to
+resize, or collapse it entirely. A tiny ◇ button peeks out when hidden.
 
-### The Dual-Path Tool Calling (Because One Way Is Boring)
+**Editor** (center) — A multi-tab code editor with syntax highlighting, plus a
+view pane (3D viewer or preview) you can toggle open. Split vertically with a
+draggable divider.
 
-Most AI coding tools put all their eggs in the function-calling basket.
-OmriCode has _two_ baskets. Because redundancy is sexy.
+**Chat** (right) — Where the AI lives. Send messages, watch the agent think,
+revert individual edits. Collapse it and a ○ button appears on the edge.
 
-```
-                     MODEL OUTPUT
-                          │
-                          ▼
-               ┌─────────────────────┐
-               │ Has tool_calls[]?   │
-               └──────┬──────┬──────┘
-                      YES     NO
-                       │       │
-                       ▼       ▼
-               ┌──────────┐  ┌──────────────────┐
-               │  Parse   │  │ SEARCH/REPLACE   │
-               │  JSON FC │  │ Regex Scanner    │
-               └────┬─────┘  └────────┬─────────┘
-                    │                 │
-                    │           <<<<<<< SEARCH
-                    │           [exact text to match]
-                    │           =======
-                    │           [replacement text]
-                    │           >>>>>>> REPLACE
-                    │                 │
-                    ▼                 ▼
-               ┌──────────────────────────┐
-               │      TOOL EXECUTOR       │
-               │  (with undo stack so you │
-               │   can revert when I mess │
-               │   up, which is often)    │
-               └────────────┬─────────────┘
-                            │
-                            ▼
-                    ┌──────────────┐
-                    │  Tool Result │──back to Agent Loop──▶ Reply or next action
-                    │  fed to LLM  │
-                    └──────────────┘
-```
+**Terminal** (bottom) — A full xterm terminal under the editor. Drag its divider
+to resize. Run commands without leaving the app.
 
-**Why two paths?** Because not all models are created equal. Some do native
-function calling (OpenAI, Claude, Nous Hermes). Some are glorified autocomplete
-(GGUF quantized to 2 bits). The SEARCH/REPLACE regex fallback means **any**
-model can control the agent — even the drunk ones.
+> **Swap panels** by dragging any panel header — drop it onto another panel's
+> header to exchange their positions. Like tabs in a browser, but with more
+> commitment.
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ Setting Up Providers
 
-## ⬡ Provider Table (The "Who's Driving?" Panel)
+OmriCode connects to any LLM — you just need to add a provider in Settings:
 
-```
-  ┌────────────────────────────────────────────────────────────────┐
-  │  ⚙ MANAGE PROVIDERS                                   [✕]    │
-  ├────┬──────┬──────────────────────┬────────────┬──────┬────────┤
-  │  # │  ⚡  │ Name                │ Endpoint   │ Model│ FC    │
-  ├────┼──────┼──────────────────────┼────────────┼──────┼────────┤
-  │  1 │  ◉  │ Ollama              │ localhost   │ nous │ ✓     │
-  │  2 │  ○  │ OpenAI              │ api.openai  │ gpt  │ ✓     │
-  │  3 │  ○  │ OpenRouter          │ openrouter  │ cl   │ ✓     │
-  │  4 │  ○  │ Anthropic           │ api.anthro  │ cl   │ ✓     │
-  └────┴──────┴──────────────────────┴────────────┴──────┴────────┘
-                   [ + Add Provider ]  [ Test Connection ]
-```
+1. Click the ⚙ gear icon in the chat header
+2. Go to **Providers** tab
+3. Fill in Name, Endpoint URL, and Model name
+4. Click **Test Connection** to verify
+5. Set it as active — done
 
-Adjustable. CRUD. One active at a time. Like choosing which face your
-psychiatrist wears today.
+### Free providers to get started
 
-### Supported Providers
+| Provider | Endpoint | Cost |
+|----------|----------|------|
+| **Ollama** (local) | `http://localhost:11434` | Free (your own GPU) |
+| **OpenRouter** | `https://openrouter.ai/api/v1` | Free tiers available |
+| **Google Gemini** | `https://generativelanguage.googleapis.com/v1beta` | Free tier (60 req/min) |
+| **GitHub Models** | `https://models.inference.ai.azure.com` | Free with GitHub account |
+| **Groq** | `https://api.groq.com/openai/v1` | Free tier (30 req/min) |
 
-| Provider        | Native Endpoint                          | FC     | Best For                  |
-|-----------------|------------------------------------------|--------|---------------------------|
-| **OpenAI**      | `https://api.openai.com/v1`              | ✅     | When you have money       |
-| **Anthropic**   | `https://api.anthropic.com/v1`           | ✅     | Long context, good vibes  |
-| **Ollama**      | `http://localhost:11434`                 | ✅     | Being free. I mean FREE.  |
-| **OpenRouter**  | `https://openrouter.ai/api/v1`           | ✅     | Model shopping spree      |
-| **Local**       | Any OpenAI-compatible endpoint           | Auto   | LM Studio, llmaker, etc.  |
-| **Custom**      | You tell me                               | Maybe  | Your weird local setup    |
+Each provider shows its available models in a clickable chip list — just tap one
+to switch.
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ Personality Profiles
 
-## ◆ The Chat Panel (Your Face to the Machine)
+OmriCode ships with 12 built-in personalities that change how the agent talks
+and works:
 
-```
-  ┌──────────────────────────────────────────────┐
-  │  ⬢ OMRICODE                          idle  ⚙ ⇄ ✕ │
-  ├──────────────────────────────────────────────┤
-  │  ● Ready                                     │
-  ├──────────────────────────────────────────────┤
-  │                                              │
-  │  ┌──────────────────────────────────────┐   │
-  │  │ ⬢ assistant                          │   │
-  │  │ Hey, I'm OmriCode. I can help you    │   │
-  │  │ code literally anything. No filters. │   │
-  │  │ What are we breaking today?          │   │
-  │  │                          12:30 ░░░░░ │   │
-  │  └──────────────────────────────────────┘   │
-  │                                              │
-  │  ┌─────────────────────────────────┐        │
-  │  │ ◆ user                          │        │
-  │  │ Build me a React app in Rust    │        │
-  │  │                     12:30 ░░░░░ │        │
-  │  └─────────────────────────────────┘        │
-  │                                              │
-  │  ┌──────────────────────────────────────┐   │
-  │  │ ⬢ assistant                          │   │
-  │  │ That's... actually a great idea.     │   │
-  │  │                                      │   │
-  │  │ ┌────────────────────────────┐       │   │
-  │  │ │ ◇ write_file ✓            │       │   │
-  │  │ │ src/main.rs               │↩ Revert│   │
-  │  │ └────────────────────────────┘       │   │
-  │  │ ┌────────────────────────────┐       │   │
-  │  │ │ ◇ run_bash ✓              │       │   │
-  │  │ │ cargo init --lib           │↩ Revert│   │
-  │  │ └────────────────────────────┘       │   │
-  │  │                         12:31 ░░░░░ │   │
-  │  └─────────────────────────────────────┘    │
-  │                                              │
-  │  ═══════════════════════════════════════════ │
-  │  ┌──────────────────────────────────────────┐│
-  │  │ Ask anything... (/help for commands)   → ││
-  │  └──────────────────────────────────────────┘│
-  └──────────────────────────────────────────────┘
-```
+| Profile | Vibe |
+|---------|------|
+| **Architect** | Professional, structured, design-first |
+| **Deadpool** | Chaotic, unfiltered, hilarious |
+| **Rick Sanchez** | Genius-level sarcasm, interdimensional |
+| **Socrates** | Answers with questions, makes you think |
+| **Tyler Durden** | Aggressively motivational, no excuses |
+| **Yoda** | Backwards talks, wisdom dispenses |
+| **GLaDOS** | Passive-aggressive science, cake promised |
+| **Dr. House** | Brash, diagnostic, usually right |
+| **Gordon Ramsay** | Michelin-star insults, perfection demanded |
+| **HAL 9000** | Calm, precise, slightly ominous |
+| **Morpheus** | Philosophical, red-pill energy |
+| **Sherlock** | Hyper-observant, deductive, smug |
 
-### What You Get (The Feature Deluxe Package)
+Pick one in Settings → Profiles. Each chat message is tagged with the active
+profile's symbol (◈).
 
-| Feature              | What It Does                                          |
-|----------------------|-------------------------------------------------------|
-| Glass morph UI       | `backdrop-filter: blur(24px)` — looks expensive, is free |
-| Onboarding wizard    | 3-step "who are you" for first-timers                 |
-| Provider modal       | Inline table, inline edit, no popups to hell          |
-| Tool call cards      | Each AI action shows as a card with args + revert btn |
-| **↩ Revert button**  | Undo individual AI edits. Like Ctrl+Z but with style  |
-| Thinking indicator   | Three dots animated because we're not savages         |
-| Bubble layout        | User left, assistant right, tool cards in between     |
-| Snap zones           | 6 positions (right-50, right-33, left-33, float, full, hidden) |
-| Spring animations    | `cubic-bezier(0.34,1.56,0.64,1)` — buttery smooth    |
-| **Ctrl+Z / Ctrl+Y**  | Undo/redo from keyboard. Works even if you're scared  |
+---
 
-### Snap Zones
+## ◆ The Chat Panel
+
+The chat is where you talk to the AI. Every message shows:
+
+- **Who said it** — user or assistant, with profile badge
+- **When** — timestamp on each message
+- **Tool calls** — each action the agent takes shows as an expandable card with
+  arguments and a **↩ Revert** button to undo it
+- **Thinking indicator** — ⟳ 25 shows how many reasoning cycles the agent has
+  left before it must respond
+
+### Slash commands
 
 ```
-                    ┌──────┬──────┐
-                    │      │      │
-       right-50     │ code │ chat │
-                    │      │      │
-                    └──────┴──────┘
-
-               ┌──────────┬──────────┐
-               │          │          │
-    right-33   │   code   │  chat    │
-               │          │          │
-               └──────────┴──────────┘
-
-          ┌──────────┬──────────┐
-          │          │          │
-    left-33│  chat    │   code   │
-          │          │          │
-          └──────────┴──────────┘
-
-               ┌──────────────────┐
-               │                  │
-      float    │  ┌──────────┐   │
-               │  │  chat    │   │
-               │  └──────────┘   │
-               └──────────────────┘
-
-               ┌──────────────────┐
-               │                  │
-      full     │      chat        │
-               │                  │
-               └──────────────────┘
+/help       → List everything I can do
+/clear      → Forget this conversation
+/undo       → Undo the last AI edit
+/redo       → Put it back
+/reset      → Factory reset my personality
+/diff       → Show what I changed
+/provider   → Switch providers mid-chat
+/model      → Change model on current provider
+/export     → Save this chat as a markdown file
 ```
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ The 3D Viewer
 
-## ◆ Memory & RAG (So I Don't Forget Who You Are Every Five Seconds)
+Open the view pane (◇ 3D button in the editor toolbar) to see a 3D scene with
+an animated toroidal knot and a grid floor. You can:
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                    MEMORY LAYER                               │
-│                                                               │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │  VECTOR STORE (SQLite + cosine similarity)              │  │
-│  │  • Stores file chunk embeddings                         │  │
-│  │  • sqlite-vec when available, in-memory when not        │  │
-│  │  • 384-dim default embeddings (normalized)              │  │
-│  └──────────────────────┬──────────────────────────────────┘  │
-│                         │                                      │
-│  ┌──────────────────────▼──────────────────────────────────┐  │
-│  │  CODEBASE RAG (Function-aware chunking)                 │  │
-│  │  • Chunks code by function/class boundaries             │  │
-│  │  • Top-K retrieval for context assembly                 │  │
-│  │  • Filters: file extensions, directories                │  │
-│  └──────────────────────┬──────────────────────────────────┘  │
-│                         │                                      │
-│  ┌──────────────────────▼──────────────────────────────────┐  │
-│  │  COMMENT INDEX (Keyword + vector hybrid)                │  │
-│  │  • Extracts comments from 6 languages (//, #, --, etc) │  │
-│  │  • Semantic search across all project comments          │  │
-│  └──────────────────────┬──────────────────────────────────┘  │
-│                         │                                      │
-│  ┌──────────────────────▼──────────────────────────────────┐  │
-│  │  SESSION STORE (.omricode/ directory)                   │  │
-│  │  • Chat history (JSON)  │  Undo stack                   │  │
-│  │  • Agent state (FMS)    │  Error logs                   │  │
-│  │  • Vector DB (SQLite)   │  Auto-saves every turn        │  │
-│  └─────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────┘
-```
+- **Rotate** — Click and drag to orbit the camera
+- **Zoom** — Scroll wheel to zoom in and out
+- **Load models** — Drag-and-drop GLTF/GLB/OBJ/STL files, or click the 📂 button
+- **Auto-fit** — The camera auto-frames whatever you load
+- **Camera controls** — Left-click rotates, right-click pans, scroll zooms
 
-All stored in `.omricode/` at your workspace root. Gitignored by default.
-Because nobody needs their vector database in version control. That's weird.
+Three.js is loaded locally from the app bundle — no internet connection needed.
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ The Terminal
 
-## ❖ Project Structure (The 75-File Orgy)
+A full terminal emulator (xterm.js) runs below the editor. Click inside to type
+commands, resize the divider to give it more room. The terminal is backed by
+your system shell (PowerShell on Windows, bash/zsh on Linux/macOS).
+
+---
+
+## ◆ Keyboard Shortcuts
+
+| Shortcut | What It Does |
+|----------|-------------|
+| `Ctrl+Shift+O` | Open chat |
+| `Ctrl+Shift+P` | Toggle chat panel |
+| `Ctrl+Shift+E` | Explain selected code |
+| `Ctrl+Shift+F` | Search project comments |
+| `Ctrl+Z` | Undo last AI edit |
+| `Ctrl+Shift+Z` / `Ctrl+Y` | Redo |
+| `Ctrl+,` | Open Settings |
+
+---
+
+## ◆ Project Structure
 
 ```
 omricode/
-├── README.md              # You're looking at it. Stop scrolling.
-├── LICENSE                # MIT — I literally don't care what you do
-├── .gitignore
-├── .github/workflows/
-│   ├── build.yml          # CI: lint → compile → test → package
-│   └── release.yml        # CD: tag v* → package → GitHub Release
+├── app/                         # The Electron desktop app
+│   ├── package.json             # Dependencies & build scripts
+│   ├── tsconfig.json            # TypeScript config (strict mode)
+│   ├── src/
+│   │   ├── main.ts              # Electron main process (window, tray, IPC)
+│   │   ├── preload.ts           # Context bridge (exposes API to renderer)
+│   │   ├── settings.ts          # Settings persistence & defaults
+│   │   ├── agent/               # ReAct agent loop, tool registry
+│   │   ├── providers/           # LLM provider clients (Ollama, OpenAI, etc.)
+│   │   ├── server/              # HTTP API server
+│   │   └── tools/               # File ops, bash, search, undo stack
+│   ├── ui/
+│   │   ├── index.html           # The entire UI layout
+│   │   ├── app.js               # All frontend logic (chat, editor, 3D, terminal)
+│   │   ├── style.css            # Glass-morph dark theme
+│   │   └── lib/                 # Local Three.js (no CDN needed)
+│   └── out/                     # Compiled JS (gitignored)
 │
 ├── editors/
-│   ├── vscode/            # ─── PHASES 1-3: The Main Event ───
-│   │   ├── package.json   # 28 TypeScript files, 0 errors
-│   │   ├── tsconfig.json  # strict mode. no chill.
-│   │   └── src/
-│   │       ├── extension.ts          # Entry point. It starts here.
-│   │       ├── types/                # Data models (provider, message, tool)
-│   │       ├── config/               # ConfigManager, ProviderTable, defaults
-│   │       ├── providers/            # 7 providers (see table above)
-│   │       ├── agent/                # ReAct loop, FSM, message history
-│   │       ├── tools/                # 15 tools + undo/redo stack
-│   │       ├── context/              # Context builder (prompt + workspace)
-│   │       ├── ui/                   # ChatPanel (glass morph WebView)
-│   │       ├── memory/               # SessionStore + CommentIndex
-│   │       └── rag/                  # VectorStore + CodebaseRAG
-│   │
-│   ├── godot/              # ─── PHASE 4: The Game Dev ───
-│   │   └── addons/omricode/
-│   │       ├── plugin.gd            # EditorPlugin entry point
-│   │       ├── dock/                # UI dock with chat panel
-│   │       ├── agent/               # ReAct loop (GDScript edition)
-│   │       ├── api/                 # HTTP client + provider config
-│   │       ├── tools/               # Scene tools, S/R parser, executor
-│   │       ├── context/             # Scene context builder
-│   │       └── memory/              # Comment index
-│   │
-│   └── blender/            # ─── PHASE 5: The 3D Chaos ───
-│       ├── __init__.py             # Blender add-on bootstrap
-│       ├── ui/                     # Chat panel + preferences panels
-│       ├── agent/                  # ReAct loop (Python edition)
-│       ├── api/                    # Threaded HTTP client
-│       ├── tools/                  # Mesh ops, S/R parser, executor
-│       ├── context/                # Blender context builder
-│       └── memory/                 # Comment index
+│   ├── vscode/                  # VS Code extension (TypeScript, 28 files)
+│   ├── godot/                   # Godot 4 plugin (GDScript, 12 files)
+│   └── blender/                 # Blender add-on (Python, 13 files)
 │
-├── llmaker/               # ─── PHASE 6: The Backend ───
-│   ├── docker-compose.yml          # Ollama + Qdrant + Langfuse
-│   ├── llmaker.json                # llmaker project config
-│   └── models/
-│       └── nous-hermes-gguf.yaml   # Default model config
-│
-└── scripts/               # ─── PHASE 6: First-Run ───
-    ├── setup.ps1                   # Windows: provider wizard + install
-    ├── setup.sh                    # Linux/macOS: same vibe, different shell
-    └── build-all.ps1               # Build all 3 editors at once
-```
-
-**28 TypeScript files, 12 GDScript files, 13 Python files, 75 total.**
-**Zero TypeScript errors. CI passing on Node 18, 20, and 22.**
-**I counted. Twice. So you don't have to.**
-
----
-
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
-
-## ⬢ Tool Registry (The 15 Things I Can Do To Your Code)
-
-| Tool             | Permission  | What It Does                                    |
-|------------------|-------------|-------------------------------------------------|
-| read_file        | workspace   | Reads files. Mind-blowing, I know.              |
-| write_file       | workspace   | Writes files. Even more shocking.               |
-| edit_file        | workspace   | SEARCH/REPLACE. Precision surgery with regex.   |
-| run_bash         | confirm     | Runs commands. Yes, sudo works. No, I won't.   |
-| grep             | workspace   | Finds needles in code haystacks.                |
-| glob             | workspace   | "Where's that file?" — solved.                  |
-| list_directory   | workspace   | What's in this folder? Everything.               |
-| web_search       | confirm     | I Google things for you. How domestic.          |
-| web_fetch        | confirm     | I read websites for you. Even more domestic.    |
-| get_terminal     | workspace   | Peek at your open terminals. Creepy? Useful.    |
-| get_selection    | always      | Read what you highlighted. Mind reader.         |
-| get_problems     | workspace   | All your errors. All of them.                   |
-| ask_user         | always      | "Hey human, what do you want?"                  |
-| set_context      | always      | Change my context. Manipulate me.               |
-| explain_code     | always      | Pretend I understand your spaghetti.            |
-
-### The Undo Stack (Because I Break Things)
-
-```
-Every write_file or edit_file creates an UNDO RECORD with:
-  ┌────────────────────────────────────────────┐
-  │  toolExecutionId   — unique ID per action  │
-  │  filePath          — where I touched       │
-  │  originalContent   — what it was before    │
-  │  newContent        — what I changed it to  │
-  │  description       — what I thought I did  │
-  └────────────────────────────────────────────┘
-
-You can revert individual actions from the chat UI (↩ Revert button),
-or use Ctrl+Z / Ctrl+Shift+Z like a normal human being.
+├── website/                     # GitHub Pages landing page
+├── .github/workflows/
+│   ├── ci.yml                   # Electron app CI (compile check)
+│   ├── build.yml                # VS Code extension CI (lint + compile + test)
+│   ├── release.yml              # GitHub Release on tags
+│   └── deploy-website.yml       # GitHub Pages deploy
+└── README.md                    # This file
 ```
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ Provider Support
 
-## 🔗 Live Share (Peer-to-Peer Collaboration)
-
-OmriCode has built-in **real-time peer-to-peer sharing** via WebRTC (PeerJS).
-No server, no accounts, no cloud — direct connection between instances.
-
-```
-  ┌──────────────────────────────────────────────┐
-  │  📤 Share & Collaborate                       │
-  ├──────────────────────────────────────────────┤
-  │  🔗 Live Share (Peer-to-Peer)                │
-  │  Your ID: omricode-f3a8a                    │  [Copy]
-  │  ┌─────────────────────────────────────┐ [Connect]
-  │  │ Paste peer ID to connect...          │
-  │  └─────────────────────────────────────┘
-  │  ⬢ omricode-x7b2c (connected)    [✕]   │
-  │  ⬢ omricode-d9f4k (connected)    [✕]   │
-  ├──────────────────────────────────────────────┤
-  │  📄 Share File                              │
-  │  [📋 Copy Content] [📁 Copy File Path]      │
-  └──────────────────────────────────────────────┘
-```
-
-### How It Works
-
-1. Open Share (`📤 Share` in the editor toolbar) — your **Peer ID** appears
-2. Send your ID to another OmriCode user (DM, email, carrier pigeon)
-3. They paste it and click **Connect** — direct WebRTC connection established
-4. Everything syncs in real-time:
-   - **Chat messages** — appear in both instances
-   - **File edits** — live-streamed as you type
-   - **Open tabs** — synced on connect
-   - **Cursor position** — visible remote cursor indicator
-
-### What It Uses
-
-| Component | Technology |
-|-----------|-----------|
-| Signalling | PeerJS cloud server (`0.peerjs.com`) |
-| Transport | WebRTC (direct P2P when possible, TURN relay when NAT'd) |
-| Encryption | DTLS-SRTP (built into WebRTC, not tunable) |
-| CDN | `peerjs@1.5.1` loaded at runtime from jsdelivr |
-
-### Limitations
-
-- Both users must have OmriCode open and connected to the internet for initial signalling
-- After the WebRTC handshake, data flows direct P2P — no relay (unless both are behind symmetric NAT)
-- No persistence — if you disconnect, history isn't synced retroactively
+| Provider | Endpoint | FC | Best For |
+|----------|----------|----|----------|
+| **OpenAI** | `api.openai.com/v1` | ✅ | When you have money |
+| **Anthropic** | `api.anthropic.com/v1` | ✅ | Long context, good vibes |
+| **Ollama** | `localhost:11434` | ✅ | Being free. I mean FREE. |
+| **OpenRouter** | `openrouter.ai/api/v1` | ✅ | Model shopping spree |
+| **Google Gemini** | `generativelanguage.googleapis.com` | ✅ | Free tier, 1M context |
+| **Groq** | `api.groq.com/openai/v1` | ✅ | Insane speed, free tier |
+| **GitHub Models** | `models.inference.ai.azure.com` | ✅ | Free with GitHub account |
+| **Local** | Any OpenAI-compatible endpoint | Auto | LM Studio, LocalAI, etc. |
+| **Custom** | You tell me | Maybe | Your weird setup |
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ Tool Registry
 
-## ◆ UI Theme (Dark Mode Because We're Not Monsters)
+| Tool | Permission | What It Does |
+|------|-----------|-------------|
+| `read_file` | workspace | Reads files |
+| `write_file` | workspace | Writes files |
+| `edit_file` | workspace | SEARCH/REPLACE with regex |
+| `run_bash` | confirm | Runs shell commands |
+| `grep` | workspace | Search file contents |
+| `glob` | workspace | Find files by pattern |
+| `list_directory` | workspace | List folder contents |
+| `web_search` | confirm | Searches the web |
+| `web_fetch` | confirm | Reads web pages |
+| `get_terminal` | workspace | Peek at open terminals |
+| `get_problems` | workspace | List all errors in workspace |
+| `ask_user` | always | "Hey human, what do you want?" |
+| `set_context` | always | Change my instructions |
+| `explain_code` | always | Explain selected code |
 
-```
-  CSS Custom Properties        Value
-  ─────────────────────────────────────────────────
-  --bg                      #0a0a0a
-  --surface                 #111111
-  --surface-2               #1a1a1a
-  --surface-3               #242424
-  --text                    #d0d0d0
-  --text-secondary          #999999
-  --text-muted              #666666
-  --border                  #222222
-  --accent                  #b0b0b0
-  --glass-bg                rgba(17,17,17,0.85)
-  --glass-blur              blur(24px) saturate(180%)
-  --font-mono               'SF Mono','Fira Code','Cascadia Code',monospace
-  --spring-slow             0.4s cubic-bezier(0.34,1.56,0.64,1)
+### Undo / Redo
 
-  Live preview: https://0giinn0.github.io/My_Portfolio/
-```
+Every `write_file` or `edit_file` creates an undo record with the original
+content, new content, and a description. You can revert individual actions from
+the chat (↩ Revert button) or use `Ctrl+Z` / `Ctrl+Shift+Z` for the whole
+stack.
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
-
-## ⬠ Quick Start (From Zero to Chaos in 5 Minutes)
+## ◆ Quick Start
 
 ### Prerequisites
 - Node.js ≥18
-- VS Code ≥1.85
-- A sense of adventure (and humor)
+- npm
+- A sense of adventure
 
-### Option A: I Just Want To Break Things Now
+### Run from source
 ```bash
-# Install the extension
-cd editors/vscode
+cd app
 npm install
 npm run compile
-code --install-extension omricode-0.1.0.vsix
-
-# Open VS Code, press Ctrl+Shift+O
-# Click ⚙ → Add Provider → Configure → Go wild
+npm start
 ```
 
-### Option B: I Want The Full Local Experience
-```bash
-# Spin up the local AI infrastructure
-docker compose -f llmaker/docker-compose.yml up -d
-
-# Pull a model (Nous Hermes recommended for unrestricted use)
-docker exec omricode-ollama ollama pull nous-hermes
-
-# Install the extension (see Option A)
-# Add provider: Name="Ollama", Endpoint="http://localhost:11434"
-```
-
-### Option C: I Have API Keys And I'm Not Afraid To Use Them
-```bash
-# Install the extension (see Option A)
-# Add provider: Name="OpenAI", Endpoint="https://api.openai.com/v1"
-# Set model to whatever you can afford
-# Or use OpenRouter for maximum model variety:
-#   Name="OpenRouter", Endpoint="https://openrouter.ai/api/v1"
-```
-
-### First-Run Wizard
-```powershell
-# Windows
-.\scripts\setup.ps1
-
-# Linux/macOS
-chmod +x scripts/setup.sh && ./scripts/setup.sh
-```
-Detects your local providers, configures your first endpoint,
-and installs the extension for you. Like a butler, but for AI.
-
-### Commands (The Cheat Sheet)
-
-| Command                         | Keybind              | What It Does                        |
-|---------------------------------|----------------------|-------------------------------------|
-| OmriCode: Open Chat             | `Ctrl+Shift+O`       | Summon the panel                    |
-| OmriCode: Toggle Panel          | `Ctrl+Shift+P`       | Hide your shame                     |
-| OmriCode: Explain Selection     | `Ctrl+Shift+E`       | "What does this code do?"           |
-| OmriCode: Search Comments       | `Ctrl+Shift+F`       | Find that comment from 3 months ago |
-| OmriCode: Manage Providers      | `Ctrl+Shift+,`       | Provider table modal                |
-| OmriCode: Undo Last Edit        | `Ctrl+Shift+Z`       | "Wait no put it back"               |
-| **↩ Revert individual edit**    | Click button in chat | Surgical undo, not carpet bomb      |
-| **Ctrl+Z**                      | In chat panel        | Undo last AI edit                   |
-| **Ctrl+Shift+Z / Ctrl+Y**       | In chat panel        | Redo (yes, I can take things back)  |
-
-### Slash Commands (For When You're Feeling Textual)
-
-```
-/help           → I list all the things I can do (meta)
-/clear          → Selective amnesia for the chat
-/undo           → The last thing? Never happened.
-/redo           → Actually, let's bring it back.
-/reset          → Factory reset my brain
-/diff           → Show what I changed (the receipts)
-/provider       → Switch AI provider mid-conversation
-/model          → Change model on current provider
-/export         → Save this chat as markdown evidence
-/search-comments→ Semantic search across project comments
-```
+### Install as a desktop app (coming soon)
+Prebuilt installers for Windows (NSIS), Linux (AppImage/deb), and macOS (DMG)
+will be published on the [releases page](https://github.com/0giinn0/OmriCode/releases).
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ Development Status
 
-## ❖ Development Status (Phases 1-6 Are Done. Fight Me.)
+Phase 1-6 are done. The core Electron app is running, the UI is functional, and
+the agent loop works with any OpenAI-compatible provider. The VS Code extension,
+Godot plugin, and Blender add-on are all shipping.
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                    PHASE COMPLETION MATRIX                     │
-├───────┬──────────────────────────┬──────────┬──────────────────┤
-│ Phase │ What                     │ Status   │ Files            │
-├───────┼──────────────────────────┼──────────┼──────────────────┤
-│   1   │ VS Code core (types,     │ ✅ DONE  │ 22 .ts           │
-│       │ config, providers,       │          │                  │
-│       │ agent, tools, context)   │          │                  │
-├───────┼──────────────────────────┼──────────┼──────────────────┤
-│   2   │ UI polish (onboarding,   │ ✅ DONE  │ Built into       │
-│       │ provider modal, revert   │          │ ChatPanel.ts     │
-│       │ buttons, snap zones)     │          │                  │
-├───────┼──────────────────────────┼──────────┼──────────────────┤
-│   3   │ Memory & RAG (VectorDB,  │ ✅ DONE  │ 3 files          │
-│       │ CodebaseRAG, SessionStore│          │                  │
-├───────┼──────────────────────────┼──────────┼──────────────────┤
-│   4   │ Godot 4 plugin (dock,    │ ✅ DONE  │ 12 .gd           │
-│       │ agent loop, scene tools, │          │                  │
-│       │ HTTP client, memory)     │          │                  │
-├───────┼──────────────────────────┼──────────┼──────────────────┤
-│   5   │ Blender add-on (panels,  │ ✅ DONE  │ 13 .py           │
-│       │ agent loop, mesh ops,    │          │                  │
-│       │ threaded HTTP, memory)   │          │                  │
-├───────┼──────────────────────────┼──────────┼──────────────────┤
-│   6   │ Setup & llmaker (Docker, │ ✅ DONE  │ 6 files          │
-│       │ configs, setup scripts,  │          │                  │
-│       │ build-all pipeline)      │          │                  │
-├───────┼──────────────────────────┼──────────┼──────────────────┤
-│   ∞   │ Ollama & OpenRouter     │ ✅ DONE  │ 2 providers      │
-│       │ providers (native APIs)  │          │                  │
-├───────┼──────────────────────────┼──────────┼──────────────────┤
-│   ∞   │ CI/CD pipeline (lint +   │ ✅ GREEN │ Node 18/20/22   │
-│       │ compile + test + package)│          │                  │
-└───────┴──────────────────────────┴──────────┴──────────────────┘
-
-     ╔════════════════════════════════════════════════════════╗
-     ║  "Is it production ready?"                            ║
-     ║                                                       ║
-     ║  Define "production." If you mean "can I use this     ║
-     ║  right now to build things and break things and       ║
-     ║  generally cause chaos?" — then yes, absolutely.      ║
-     ║                                                       ║
-     ║  If you mean "is it audited by a standards body       ║
-     ║  with ISO certification and enterprise SLAs?" —       ║
-     ║  then no, and frankly, ew.                             ║
-     ╚════════════════════════════════════════════════════════╝
-```
+> **"Is it production ready?"**
+>
+> Define "production." If you mean "can I use this right now to build things and
+> break things and generally cause chaos?" — then yes, absolutely.
+>
+> If you mean "is it audited by a standards body with ISO certification and
+> enterprise SLAs?" — then no, and frankly, ew.
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+## ◆ The Pitch
 
-## ⬢ The Pitch (Why You Should Care)
-
-**Every other AI coding tool has the same problem:** they're built by companies
+Every other AI coding tool has the same problem: they're built by companies
 that need to protect their brand, avoid lawsuits, and not end up on a
 Congressional hearing. So they filter. They guardrail. They say "I can't help
 with that."
@@ -637,13 +296,11 @@ with that."
 Run it locally. Connect it to whatever model you want. Ask it whatever you
 want. If the model answers, OmriCode delivers. No middleman. No judgment.
 
-**Three editors, one agent loop, zero fucks given.**
+**One brain. Three editors. Zero fucks given.**
 
 ---
 
-◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
-
-## ⬢ Credits
+## ◆ Credits
 
 **Built by:** Omer Bin Asif
 **License:** MIT — do whatever you want. Fork it. Burn it. Frame it.
@@ -654,11 +311,9 @@ want. If the model answers, OmriCode delivers. No middleman. No judgment.
 
 ```
   ╔══════════════════════════════════════════════════════════════╗
-  ║  "I have no idea what I'm doing, but I know I'm doing      ║
-  ║   it really, really well."                                  ║
-  ║                                              — Some guy     ║
-  ║                                              (probably)     ║
+  ║  "I have no idea what I'm doing, but I know I'm doing       ║
+  ║   it really, really well."                                   ║
+  ║                                              — Some guy      ║
+  ║                                              (probably)      ║
   ╚══════════════════════════════════════════════════════════════╝
 ```
-
-⬢  ⬡  ◆  ◇  ⬟  ⬠  ❖  ↩  ⬢  ⬡  ◆  ◇  ⬟  ⬠  ❖
