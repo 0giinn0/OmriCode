@@ -44,6 +44,7 @@
         <div class="files-tree" id="filesTree" style="display:none"></div>
       </div>
     </div>
+    <div class="sidebar-restore" id="sidebarRestore" title="Show file explorer">⊟</div>
     <div class="divider divider-sidebar" id="dividerSidebar"></div>
 
     <!-- Center: Editor -->
@@ -55,51 +56,61 @@
         <span style="flex:1"></span>
         <button class="tb-btn" id="terminalToggleBtn" title="Toggle terminal">◇ Terminal</button>
       </div>
-      <div id="editorContainer" style="flex:1;position:relative"></div>
-      <div class="editor-welcome" id="editorWelcome">
-        <div class="welcome-content">
-          <h1>◇ OmriCode</h1>
-          <p>Open a file from the explorer or start a conversation.</p>
-          <div class="welcome-actions">
-            <div class="welcome-card" id="welcomeNewFile">
-              <span class="welcome-icon">+</span>
-              <span>New File</span>
-            </div>
-            <div class="welcome-card" id="welcomeOpenFolder">
-              <span class="welcome-icon">⊟</span>
-              <span>Open Folder</span>
-            </div>
-            <div class="welcome-card" id="welcomeChat">
-              <span class="welcome-icon">○</span>
-              <span>Start Chatting</span>
+      <div class="editor-split" id="editorSplit">
+        <div class="editor-pane code-pane" id="codePane">
+          <div id="editorContainer" style="position:absolute;inset:0"></div>
+          <div class="editor-welcome" id="editorWelcome">
+            <div class="welcome-content">
+              <h1>◇ OmriCode</h1>
+              <p>Open a file from the explorer or start a conversation.</p>
+              <div class="welcome-actions">
+                <div class="welcome-card" id="welcomeNewFile">
+                  <span class="welcome-icon">+</span>
+                  <span>New File</span>
+                </div>
+                <div class="welcome-card" id="welcomeOpenFolder">
+                  <span class="welcome-icon">⊟</span>
+                  <span>Open Folder</span>
+                </div>
+                <div class="welcome-card" id="welcomeChat">
+                  <span class="welcome-icon">○</span>
+                  <span>Start Chatting</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="preview-panel" id="previewPanel" style="display:none">
-        <div class="preview-header">
-          <span>○ Preview</span>
-          <div class="preview-url-bar">
-            <input type="text" id="previewUrl" value="" placeholder="file:/// or http://..." spellcheck="false">
-            <button class="tb-btn" id="previewGo">Go</button>
+        <div class="divider divider-view" id="dividerView" style="display:none"></div>
+        <div class="editor-pane view-pane" id="viewPane" style="display:none">
+          <div class="preview-panel" id="previewPanel" style="display:flex;flex:1;min-height:0">
+            <div class="preview-header">
+              <span>○ Preview</span>
+              <div class="preview-url-bar">
+                <input type="text" id="previewUrl" value="" placeholder="file:/// or http://..." spellcheck="false">
+                <button class="tb-btn" id="previewGo">Go</button>
+              </div>
+              <button class="tb-btn" id="previewClose">✕</button>
+            </div>
+            <iframe id="previewIframe" style="flex:1;border:none;background:#fff"></iframe>
           </div>
-          <button class="tb-btn" id="previewClose">✕</button>
-        </div>
-        <iframe id="previewIframe" style="flex:1;border:none;background:#fff"></iframe>
-      </div>
-      <div class="view3d-panel" id="view3dPanel" style="display:none">
-        <div class="view3d-header">
-          <span>◇ 3D Viewer</span>
-          <div class="view3d-controls">
-            <button class="tb-btn" id="view3dZoomOut" title="Zoom out">−</button>
-            <span id="view3dScale" style="font-size:9px;color:var(--text-muted);min-width:28px;text-align:center">100%</span>
-            <button class="tb-btn" id="view3dZoomIn" title="Zoom in">+</button>
-            <button class="tb-btn" id="view3dReset" title="Reset view">⊙</button>
+          <div class="view3d-panel" id="view3dPanel" style="display:none;flex:1;min-height:0">
+            <div class="view3d-header">
+              <span>◇ 3D Viewer</span>
+              <div class="view3d-controls">
+                <button class="tb-btn" id="view3dZoomOut" title="Zoom out">−</button>
+                <span id="view3dScale" style="font-size:9px;color:var(--text-muted);min-width:28px;text-align:center">100%</span>
+                <button class="tb-btn" id="view3dZoomIn" title="Zoom in">+</button>
+                <button class="tb-btn" id="view3dReset" title="Reset view">⊙</button>
+                <button class="tb-btn" id="view3dLoad" title="Load model file">📂</button>
+              </div>
+              <button class="tb-btn" id="view3dClose">✕</button>
+              <input type="file" id="view3dFileInput" accept=".glb,.gltf,.obj,.stl" style="display:none">
+            </div>
+            <div id="view3dContainer" style="flex:1;min-height:0;position:relative;background:#0a0a0a"></div>
           </div>
-          <button class="tb-btn" id="view3dClose">✕</button>
         </div>
-        <div id="view3dContainer" style="flex:1;min-height:0;position:relative;background:#0a0a0a"></div>
       </div>
+      <div class="divider divider-term" id="dividerTerm" style="display:none"></div>
       <div class="terminal-panel" id="terminalPanel" style="display:none">
         <div class="terminal-header">
           <span>◇ TERMINAL</span>
@@ -111,15 +122,18 @@
         <div id="terminalContainer" style="flex:1;min-height:0"></div>
       </div>
     </div>
+    <div class="chat-restore" id="chatRestore" title="Show chat">○</div>
     <div class="divider divider-chat" id="dividerChat"></div>
 
     <!-- Right: Chat Panel -->
     <div class="ide-chat" id="ideChat">
       <div class="chat-header">
+        <button class="tb-btn" id="profileBadge" title="Switch personality" style="font-size:9px;padding:2px 6px;margin-right:4px">◈</button>
         <span>CHAT</span>
         <div class="model-scroll-wrap">
           <div class="model-scroll" id="modelScroll"></div>
         </div>
+        <span class="iter-badge" id="iterBadge" title="Thinking cycles (click to adjust)">⟳ 25</span>
         <button class="tb-btn" id="chatToggle" title="Toggle chat">▹</button>
       </div>
       <div class="chat-body" id="chatBody">
@@ -247,6 +261,11 @@
             <div style="margin-top:4px;font-size:9px;color:var(--text-muted)">FC = Function Calling support (✓ yes, ✕ no, ? auto-detect)</div>
           </div>
           <div class="settings-section">
+            <h3>Personality</h3>
+            <div class="profile-grid" id="profileGrid"></div>
+            <div style="margin-top:4px;font-size:9px;color:var(--text-muted)">Switch between AI personalities — each changes tone, behavior, and response style.</div>
+          </div>
+          <div class="settings-section">
             <h3>Theme</h3>
             <div class="theme-grid" id="themeGrid">
               <div class="theme-circle" data-theme="dark" title="Dark"><div class="circle-swatch" style="background:#0a0a0a;border:1px solid #333"></div></div>
@@ -338,7 +357,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.1/dist/peerjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

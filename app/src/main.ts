@@ -4,7 +4,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { AgentLoop } from './agent/AgentLoop';
 import { ProviderGateway } from './providers/ProviderGateway';
 import { ToolRegistry } from './tools/ToolRegistry';
-import { SettingsManager, AppSettings } from './settings';
+import { SettingsManager, AppSettings, BehaviorProfile } from './settings';
 import { startServer } from './server/api';
 import { SessionStore } from './memory/SessionStore';
 import { ProviderRow, ProviderMessage } from './types/provider';
@@ -177,6 +177,14 @@ function registerIpcHandlers(): void {
     } catch (err) { return { success: false, error: (err as Error).message, latencyMs: 0, modelFound: false, supportsFC: false }; }
   });
 
+  // Profiles
+  ipcMain.handle('get-profiles', () => settingsManager.getProfiles());
+  ipcMain.handle('get-active-profile', () => settingsManager.getActiveProfile());
+  ipcMain.handle('set-active-profile', (_event: IpcMainInvokeEvent, id: string) => { settingsManager.setActiveProfile(id); return settingsManager.getProfiles(); });
+  ipcMain.handle('add-profile', (_event: IpcMainInvokeEvent, profile: BehaviorProfile) => { settingsManager.addProfile(profile); return settingsManager.getProfiles(); });
+  ipcMain.handle('update-profile', (_event: IpcMainInvokeEvent, id: string, updates: Partial<BehaviorProfile>) => { settingsManager.updateProfile(id, updates); return settingsManager.getProfiles(); });
+  ipcMain.handle('remove-profile', (_event: IpcMainInvokeEvent, id: string) => { settingsManager.removeProfile(id); return settingsManager.getProfiles(); });
+
   // Agent
   ipcMain.handle('send-message', async (_event: IpcMainInvokeEvent, text: string) => {
     const provider = settingsManager.getActiveProvider();
@@ -204,6 +212,8 @@ function registerIpcHandlers(): void {
 
   // Clear history
   ipcMain.handle('clear-history', () => { sessionStore.clear('chat_history'); });
+
+
 
   // User prompt (ask_user tool)
   ipcMain.handle('resolve-user-prompt', (_event: IpcMainInvokeEvent, id: string, answer: string) => {

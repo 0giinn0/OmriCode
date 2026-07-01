@@ -1,4 +1,11 @@
 (function(){
+  window.onerror = (msg, url, line, col, err) => {
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:red;color:white;padding:8px;font-size:11px;z-index:9999;font-family:monospace;white-space:pre-wrap';
+    d.textContent = 'ERR: ' + msg + ' (line ' + line + ')';
+    document.body.appendChild(d);
+  };
+
   const api = window.omricode;
   if (!api) { document.body.innerHTML = '<div style="padding:20px;color:red">Bridge not loaded</div>'; return; }
 
@@ -27,7 +34,7 @@
 
   let settings = {}, providers = [], isProcessing = false, currentAssistantId = null;
   let fileTreeData = [], openTabs = [], activeTabPath = null;
-  let snapState = 'right-33'; // right-33, right-50, left-33, bottom, float, full, hidden
+  let snapState = '';
   let sidebarOpen = true, chatOpen = true;
   let editor = null, editorModel = null;
   let editorFocused = true;
@@ -46,6 +53,7 @@
       loadFileTree();
     }
     if (providers.some(p => p.isActive)) $('#onboardingWizard').style.display = 'none';
+    loadProfiles();
     initPeer();
   });
 
@@ -274,123 +282,9 @@
     return icons[ext] || '📄';
   }
 
-  // ─── Snap Zones ───
-  const snapPositions = ['right-33', 'right-50', 'left-33', 'bottom', 'float', 'full', 'hidden'];
-
-  function createSnapOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'snap-overlay';
-    overlay.id = 'snapOverlay';
-    overlay.style.display = 'none';
-    document.body.appendChild(overlay);
-    const zones = ['right-50', 'right-33', 'left-33', 'bottom', 'full', 'float'];
-    zones.forEach(z => {
-      const zone = document.createElement('div');
-      zone.className = `snap-zone snap-${z}`;
-      zone.dataset.snap = z;
-      zone.id = `snap-${z}`;
-      overlay.appendChild(zone);
-    });
-  }
-
-  $('#chatToggle').onclick = () => {
-    chatOpen = !chatOpen;
-    $('#ideChat').classList.toggle('collapsed', !chatOpen);
-    $('#chatToggle').textContent = chatOpen ? '▹' : '◃';
-  };
-
-  $('#sidebarClose').onclick = () => {
-    sidebarOpen = !sidebarOpen;
-    $('#ideSidebar').classList.toggle('collapsed', !sidebarOpen);
-    $('#sidebarClose').textContent = sidebarOpen ? '◃' : '▹';
-  };
-
-  // Snap via right-click menu or header drag
-  const chatHeader = $('.chat-header');
-  chatHeader.onmousedown = (e) => {
-    if (e.button !== 0) return;
-    const overlay = $('#snapOverlay');
-    overlay.style.display = 'block';
-    $$('.snap-zone').forEach(z => z.classList.add('active'));
-    startDrag(
-      (e) => {
-        $$('.snap-zone').forEach(z => {
-          const rect = z.getBoundingClientRect();
-          const hover = e.clientX >= rect.left && e.clientX <= rect.right &&
-                        e.clientY >= rect.top && e.clientY <= rect.bottom;
-          z.classList.toggle('hover', hover);
-        });
-      },
-      (e) => {
-        const overlay = $('#snapOverlay');
-        overlay.style.display = 'none';
-        let snapped = null;
-        $$('.snap-zone').forEach(z => {
-          z.classList.remove('active', 'hover');
-          const rect = z.getBoundingClientRect();
-          if (e.clientX >= rect.left && e.clientX <= rect.right &&
-              e.clientY >= rect.top && e.clientY <= rect.bottom) {
-            snapped = z.dataset.snap;
-          }
-        });
-        if (snapped) applySnap(snapped);
-      }
-    );
-  };
-
-  function applySnap(pos) {
-    snapState = pos;
-    chatOpen = true;
-    const chat = $('#ideChat');
-    chat.classList.remove('collapsed');
-    switch (pos) {
-      case 'right-50': chat.style.width = '50%'; break;
-      case 'right-33': chat.style.width = 'var(--chat-w)'; break;
-      case 'left-33':
-        chat.style.width = '33%';
-        $('#ideBody').style.flexDirection = 'row-reverse';
-        break;
-      case 'bottom':
-        chat.style.position = 'absolute';
-        chat.style.bottom = 'var(--statusbar-h)';
-        chat.style.left = '0';
-        chat.style.right = '0';
-        chat.style.height = '40%';
-        chat.style.width = '100%';
-        chat.style.zIndex = '10';
-        chat.style.borderLeft = 'none';
-        chat.style.borderTop = '1px solid var(--border)';
-        break;
-      case 'float':
-        chat.style.position = 'fixed';
-        chat.style.width = '400px';
-        chat.style.height = '500px';
-        chat.style.bottom = 'calc(var(--statusbar-h) + 20px)';
-        chat.style.right = '20px';
-        chat.style.zIndex = '50';
-        chat.style.boxShadow = '0 20px 60px rgba(0,0,0,0.5)';
-        chat.style.borderRadius = 'var(--radius)';
-        chat.style.border = '1px solid var(--border)';
-        break;
-      case 'full':
-        chat.style.position = 'fixed';
-        chat.style.inset = 'var(--titlebar-h) 0 var(--statusbar-h)';
-        chat.style.width = '100%';
-        chat.style.zIndex = '10';
-        chat.style.borderLeft = 'none';
-        break;
-      case 'hidden':
-        chat.classList.add('collapsed');
-        chatOpen = false;
-        chat.style.position = '';
-        $('#chatToggle').textContent = '◃';
-        break;
-    }
-  }
-
-  // ─── Panel Swap (Blender-like) ───
+  // ─── Panel Swap & Snap (Blender-like) ───
   const panelSlots = [
-    { id: 'ideSidebar', label: 'EXPLORER' },
+    { id: 'ideSidebar', label: 'FILES' },
     { id: 'ideEditor', label: 'EDITOR' },
     { id: 'ideChat', label: 'CHAT' },
   ];
@@ -406,15 +300,22 @@
     return el ? el.querySelector('.sidebar-header, .editor-toolbar, .chat-header') : null;
   }
 
-  // Make each panel header a drag source for swapping (exclude chat header — it has snap)
+  function getPanelIdx(el) {
+    for (let i = 0; i < panelSlots.length; i++) {
+      if (getPanelEl(panelSlots[i]) === el) return i;
+    }
+    return -1;
+  }
+
+  // Make all panel headers draggable for swapping
   panelSlots.forEach((slot, idx) => {
-    if (slot.id === 'ideChat') return;
     const header = getHeaderEl(slot);
     if (!header) return;
     header.style.cursor = 'grab';
     header.addEventListener('mousedown', (e) => {
       if (e.button !== 0 || e.target.closest('button, .tb-btn, input, textarea, select')) return;
-      const targets = [];
+      e.preventDefault();
+      const zones = [];
       panelSlots.forEach((otherSlot, oIdx) => {
         if (oIdx === idx) return;
         const otherEl = getPanelEl(otherSlot);
@@ -436,14 +337,15 @@
         zone.textContent = '⇄ ' + otherSlot.label;
         zone.dataset.targetIdx = oIdx;
         swapOverlay.appendChild(zone);
-        targets.push(zone);
+        zones.push(zone);
       });
       swapOverlay.style.display = 'block';
-      requestAnimationFrame(() => targets.forEach(t => t.style.opacity = '1'));
+      requestAnimationFrame(() => zones.forEach(t => t.style.opacity = '1'));
+      document.body.style.cursor = 'grabbing';
 
       startDrag(
         (e) => {
-          targets.forEach(t => {
+          zones.forEach(t => {
             const r = t.getBoundingClientRect();
             const hover = e.clientX >= r.left && e.clientX <= r.right &&
                           e.clientY >= r.top && e.clientY <= r.bottom;
@@ -453,8 +355,9 @@
         },
         (e) => {
           swapOverlay.style.display = 'none';
+          document.body.style.cursor = '';
           let targetIdx = null;
-          targets.forEach(t => {
+          zones.forEach(t => {
             const r = t.getBoundingClientRect();
             if (e.clientX >= r.left && e.clientX <= r.right &&
                 e.clientY >= r.top && e.clientY <= r.bottom) {
@@ -475,18 +378,41 @@
     const parent = document.querySelector('.ide-body');
     const panels = panelSlots.map(s => getPanelEl(s));
     const a = panels[aIdx], b = panels[bIdx];
-    const aNext = a.nextElementSibling;
-    const bNext = b.nextElementSibling;
+    if (!a || !b || !parent) return;
     if (aIdx < bIdx) {
       parent.insertBefore(b, a);
-      if (bNext) parent.insertBefore(a, bNext);
+      const aNext = a.nextElementSibling;
+      if (aNext && aNext !== b) parent.insertBefore(a, aNext);
       else parent.appendChild(a);
     } else {
       parent.insertBefore(a, b);
-      if (aNext) parent.insertBefore(b, aNext);
+      const bNext = b.nextElementSibling;
+      if (bNext && bNext !== a) parent.insertBefore(b, bNext);
       else parent.appendChild(b);
     }
+    // Swap the slot order
+    [panelSlots[aIdx], panelSlots[bIdx]] = [panelSlots[bIdx], panelSlots[aIdx]];
   }
+
+  // ─── Toggle panel collapse ───
+  function toggleSidebar(open) {
+    sidebarOpen = open !== undefined ? open : !sidebarOpen;
+    $('#ideSidebar').classList.toggle('collapsed', !sidebarOpen);
+    $('#sidebarClose').textContent = sidebarOpen ? '◃' : '▹';
+    $('#sidebarRestore').classList.toggle('show', !sidebarOpen);
+  }
+
+  function toggleChat(open) {
+    chatOpen = open !== undefined ? open : !chatOpen;
+    $('#ideChat').classList.toggle('collapsed', !chatOpen);
+    $('#chatToggle').textContent = chatOpen ? '▹' : '◃';
+    $('#chatRestore').classList.toggle('show', !chatOpen);
+  }
+
+  $('#chatToggle').onclick = () => toggleChat();
+  $('#sidebarClose').onclick = () => toggleSidebar();
+  $('#sidebarRestore').onclick = () => toggleSidebar(true);
+  $('#chatRestore').onclick = () => toggleChat(true);
 
   // ─── Keyboard shortcuts ───
   document.addEventListener('keydown', (e) => {
@@ -504,6 +430,16 @@
   $('#btnClose').onclick = () => api.close();
   $('#navSettings').onclick = () => { $('#settingsModal').style.display = 'flex'; };
   $('#settingsClose').onclick = () => { $('#settingsModal').style.display = 'none'; };
+  $('#profileBadge').onclick = () => { $('#settingsModal').style.display = 'flex'; };
+  $('#iterBadge').onclick = async () => {
+    const opts = [10, 15, 20, 25, 30, 50];
+    const cur = settings.maxIterations || 25;
+    const idx = (opts.indexOf(cur) + 1) % opts.length;
+    const next = opts[idx];
+    await api.updateSettings({ maxIterations: next });
+    settings.maxIterations = next;
+    $('#iterBadge').textContent = '⟳ ' + next;
+  };
 
   // ─── Folder picker ───
   const workspacePathEl = $('#workspacePath');
@@ -542,6 +478,48 @@
   async function loadProviders() {
     providers = await api.getProviders();
     renderProviderTable();
+  }
+
+  // ─── Profiles / Personalities ───
+  let profiles = [];
+  let activeProfileId = settings.activeProfileId || 'builtin-architect';
+
+  async function loadProfiles() {
+    try {
+      profiles = await api.getProfiles();
+      const active = await api.getActiveProfile();
+      activeProfileId = active ? active.id : 'builtin-architect';
+    } catch { profiles = []; }
+    renderProfileGrid();
+    updateProfileBadge();
+  }
+
+  function renderProfileGrid() {
+    const grid = $('#profileGrid');
+    if (!grid) return;
+    grid.innerHTML = profiles.map(p => `
+      <div class="profile-card${p.id === activeProfileId ? ' active' : ''}" data-id="${p.id}">
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-desc">${p.isBuiltIn ? 'built-in' : 'custom'} · ${p.temperature.toFixed(1)} temp</div>
+      </div>
+    `).join('');
+    grid.querySelectorAll('.profile-card').forEach(card => {
+      card.onclick = async () => {
+        const id = card.dataset.id;
+        await api.setActiveProfile(id);
+        activeProfileId = id;
+        renderProfileGrid();
+        updateProfileBadge();
+      };
+    });
+  }
+
+  function updateProfileBadge() {
+    const badge = $('#profileBadge');
+    if (!badge) return;
+    const p = profiles.find(pr => pr.id === activeProfileId);
+    badge.textContent = p ? `◈ ${p.name.substring(0, 12)}` : '◈';
+    badge.title = p ? `Personality: ${p.name} (click to change)` : 'Switch personality';
   }
 
   function renderProviderTable() {
@@ -736,6 +714,7 @@
     $('#serverPortRow').style.display = s.enableServer !== false ? 'flex' : 'none';
     $$('.theme-circle').forEach(c => c.classList.toggle('active', c.dataset.theme === (s.theme || 'dark')));
     $$('.accent-swatch').forEach(c => c.classList.toggle('active', c.dataset.color === (s.accentColor || '#b0b0b0')));
+    $('#iterBadge').textContent = '⟳ ' + (s.maxIterations || 25);
   }
 
   // ─── Chat ───
@@ -842,30 +821,55 @@
   api.onReset(() => { messagesEl.innerHTML = ''; currentAssistantId = null; isProcessing = false; sendBtn.disabled = false; inputEl.value = ''; inputEl.style.height = 'auto'; setStatus('idle'); });
 
   // ─── Draggable Dividers ───
-  function makeDivider(dividerId, leftId, rightId, isHorizontal) {
+  function makeDivider(dividerId, targetId, isChat, isHorizontal) {
     const divider = $(`#${dividerId}`);
     if (!divider) return;
-    let startPos = 0, startSize = 0;
+    const target = $(`#${targetId}`);
+    if (!target) return;
+
+    const snaps = isChat ? [240, 280, 320, 400, 500, 600] : isHorizontal ? [100, 150, 200, 250, 300, 350] : [160, 200, 250, 300, 400];
+    const minSize = isChat ? 240 : isHorizontal ? 80 : 160;
+    const maxSize = isChat ? 600 : isHorizontal ? 500 : 400;
+
     divider.onmousedown = (e) => {
-      startPos = isHorizontal ? e.clientY : e.clientX;
-      const left = $(`#${leftId}`);
-      startSize = isHorizontal ? left.offsetHeight : left.offsetWidth;
+      e.preventDefault();
+      target.classList.remove('collapsed');
+      if (targetId === 'ideSidebar') { sidebarOpen = true; $('#sidebarRestore').classList.remove('show'); }
+      if (targetId === 'ideChat') { chatOpen = true; $('#chatRestore').classList.remove('show'); }
+      const startSz = isHorizontal ? (target.offsetHeight || minSize) : (target.offsetWidth || minSize);
+
+      divider.classList.add('active');
       document.body.style.cursor = isHorizontal ? 'row-resize' : 'col-resize';
       document.body.style.userSelect = 'none';
+
       startDrag(
         (e) => {
           const delta = (isHorizontal ? e.clientY : e.clientX) - startPos;
-          const left = $(`#${leftId}`);
-          const newSize = Math.max(100, startSize + delta);
-          if (isHorizontal) left.style.height = newSize + 'px';
-          else left.style.width = newSize + 'px';
+          let newSz = isChat ? startSz - delta : startSz + delta;
+          newSz = Math.max(minSize, Math.min(maxSize, Math.round(newSz)));
+          if (isHorizontal) target.style.height = newSz + 'px';
+          else target.style.width = newSz + 'px';
+          target.style.transition = 'none';
         },
-        () => {}
+        () => {
+          divider.classList.remove('active');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          const finalSz = isHorizontal ? target.offsetHeight : target.offsetWidth;
+          const snap = snaps.reduce((a, b) => Math.abs(b - finalSz) < Math.abs(a - finalSz) ? b : a);
+          if (Math.abs(snap - finalSz) < 30) {
+            if (isHorizontal) target.style.height = snap + 'px';
+            else target.style.width = snap + 'px';
+          }
+          target.style.transition = '';
+        }
       );
     };
   }
-  makeDivider('dividerSidebar', 'ideSidebar', 'ideEditor', false);
-  makeDivider('dividerChat', 'ideEditor', 'ideChat', false);
+  makeDivider('dividerSidebar', 'ideSidebar', false);
+  makeDivider('dividerChat', 'ideChat', true);
+  makeDivider('dividerView', 'viewPane', false);
+  makeDivider('dividerTerm', 'terminalPanel', false, true);
 
   // ─── Terminal ───
   let term = null, termFit = null;
@@ -902,9 +906,18 @@
     setTimeout(() => termFit.fit(), 100);
   }
 
-  $('#terminalToggleBtn').onclick = initTerminal;
+  $('#terminalToggleBtn').onclick = () => {
+    const termPanel = $('#terminalPanel');
+    if (termPanel.style.display !== 'none') {
+      termPanel.style.display = 'none';
+      $('#dividerTerm').style.display = 'none';
+      return;
+    }
+    initTerminal();
+  };
   $('#terminalCloseBtn').onclick = () => {
     $('#terminalPanel').style.display = 'none';
+    $('#dividerTerm').style.display = 'none';
     api.terminalStop();
     if (term) { term.dispose(); term = null; termFit = null; }
   };
@@ -915,17 +928,42 @@
   };
 
   // ─── Preview ───
+  function showViewPane() {
+    const pane = $('#viewPane');
+    const div = $('#dividerView');
+    pane.style.display = 'flex';
+    div.style.display = 'block';
+    if (!pane.style.width) pane.style.width = '45%';
+  }
+
+  function hideViewPane() {
+    const hasPreview = $('#previewPanel').style.display !== 'none';
+    const has3d = $('#view3dPanel').style.display !== 'none';
+    if (!hasPreview && !has3d) {
+      $('#viewPane').style.display = 'none';
+      $('#dividerView').style.display = 'none';
+    }
+  }
+
   $('#previewBtn').onclick = () => {
     const panel = $('#previewPanel');
-    if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+    if (panel.style.display !== 'none') {
+      panel.style.display = 'none';
+      hideViewPane();
+      return;
+    }
     panel.style.display = 'flex';
+    showViewPane();
     // Auto-set URL to current file if HTML
     if (activeTabPath && (activeTabPath.endsWith('.html') || activeTabPath.endsWith('.htm'))) {
       $('#previewUrl').value = 'file:///' + activeTabPath.replace(/\\/g, '/');
       $('#previewIframe').src = 'file:///' + activeTabPath.replace(/\\/g, '/');
     }
   };
-  $('#previewClose').onclick = () => { $('#previewPanel').style.display = 'none'; };
+  $('#previewClose').onclick = () => {
+    $('#previewPanel').style.display = 'none';
+    hideViewPane();
+  };
   $('#previewGo').onclick = () => {
     let url = $('#previewUrl').value.trim();
     if (url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('file:///')) url = 'https://' + url;
@@ -945,7 +983,25 @@
   let renderer, scene, camera, threeModel, animFrame;
   let view3dScale = 1;
 
+  function loadThreeScripts(cb) {
+    if (typeof THREE !== 'undefined' && THREE.WebGLRenderer) { cb(); return; }
+    const scripts = ['lib/three.min.js', 'lib/GLTFLoader.js', 'lib/OBJLoader.js', 'lib/STLLoader.js'];
+    let i = 0;
+    function next() {
+      if (i >= scripts.length) { cb(); return; }
+      const s = document.createElement('script');
+      s.async = false;
+      s.onload = next;
+      s.onerror = () => { showView3dError('Failed to load ' + scripts[i]); };
+      s.src = scripts[i++];
+      document.head.appendChild(s);
+    }
+    next();
+  }
+
   function initView3d() {
+    if (renderer) return;
+    loadThreeScripts(function() {
     const container = $('#view3dContainer');
     if (!container || renderer) return;
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -963,13 +1019,16 @@
     const backLight = new THREE.DirectionalLight(0x4466ff, 0.3);
     backLight.position.set(-5, 0, -5);
     scene.add(backLight);
+    const grid = new THREE.GridHelper(10, 20, 0x6666aa, 0x333355);
+    grid.position.y = -1.5;
+    scene.add(grid);
     loadDefaultModel();
     animate();
     window.addEventListener('resize', onView3dResize);
-  }
+  }); }
 
   function loadDefaultModel() {
-    if (threeModel) { scene.remove(threeModel); threeModel.geometry.dispose(); }
+    clearModel();
     const geo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
     const mat = new THREE.MeshStandardMaterial({
       color: 0x8888cc, metalness: 0.3, roughness: 0.6,
@@ -983,6 +1042,52 @@
       new THREE.MeshBasicMaterial({ color: 0x6666aa, wireframe: true, transparent: true, opacity: 0.15 })
     );
     threeModel.add(wire);
+  }
+
+  function clearModel() {
+    if (threeModel) { scene.remove(threeModel); threeModel.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); threeModel = null; }
+  }
+
+  function loadModelFile(file) {
+    if (typeof THREE === 'undefined') { loadThreeScripts(() => { loadModelFile(file); }); return; }
+    if (!renderer) { if ($('#view3dPanel').style.display === 'none') { showView3dError('Open the 3D Viewer first (◇ 3D button).'); return; } initView3d(); return; }
+    clearModel();
+    const ext = file.name.split('.').pop().toLowerCase();
+    const url = URL.createObjectURL(file);
+    const loaders = { glb: 'GLTFLoader', gltf: 'GLTFLoader', obj: 'OBJLoader', stl: 'STLLoader' };
+    if (!loaders[ext]) { showView3dError('Unsupported format: .' + ext); return; }
+    if (typeof THREE[loaders[ext]] === 'undefined') { showView3dError(loaders[ext] + ' not loaded (check internet).'); return; }
+    const loaderMap = {
+      glb: () => { const l = new THREE.GLTFLoader(); l.load(url, g => { threeModel = g.scene; scene.add(threeModel); autoFitModel(); }, undefined, () => loadDefaultModel()); },
+      gltf: () => { const l = new THREE.GLTFLoader(); l.load(url, g => { threeModel = g.scene; scene.add(threeModel); autoFitModel(); }, undefined, () => loadDefaultModel()); },
+      obj: () => { const l = new THREE.OBJLoader(); l.load(url, obj => { threeModel = obj; scene.add(threeModel); autoFitModel(); }, undefined, () => loadDefaultModel()); },
+      stl: () => { const l = new THREE.STLLoader(); l.load(url, geo => { const mat = new THREE.MeshStandardMaterial({ color: 0x8888cc, metalness: 0.3, roughness: 0.6 }); threeModel = new THREE.Mesh(geo, mat); scene.add(threeModel); autoFitModel(); }, undefined, () => loadDefaultModel()); }
+    };
+    loaderMap[ext]();
+  }
+
+  function showView3dError(msg) {
+    const c = $('#view3dContainer');
+    if (!c) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;text-align:center;padding:20px;background:var(--bg);z-index:5';
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  function autoFitModel() {
+    if (!threeModel) return;
+    const box = new THREE.Box3().setFromObject(threeModel);
+    const size = box.getSize(new THREE.Vector3()).length();
+    const center = box.getCenter(new THREE.Vector3());
+    if (size > 0) {
+      const dist = size * 1.5;
+      camera.position.set(center.x + dist * 0.6, center.y + dist * 0.4, center.z + dist);
+      camera.lookAt(center);
+      view3dScale = 1;
+      threeModel.scale.set(1, 1, 1);
+    }
   }
 
   function animate() {
@@ -1018,17 +1123,29 @@
 
   $('#view3dBtn').onclick = () => {
     const panel = $('#view3dPanel');
-    if (panel.style.display !== 'none') { panel.style.display = 'none'; if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; } return; }
+    if (panel.style.display !== 'none') {
+      panel.style.display = 'none';
+      if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+      hideViewPane();
+      return;
+    }
     panel.style.display = 'flex';
-    if (typeof THREE !== 'undefined') initView3d();
+    showViewPane();
+    initView3d();
   };
   $('#view3dClose').onclick = () => {
     $('#view3dPanel').style.display = 'none';
     if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+    hideViewPane();
   };
   $('#view3dZoomIn').onclick = () => setView3dScale(1.2);
   $('#view3dZoomOut').onclick = () => setView3dScale(1 / 1.2);
   $('#view3dReset').onclick = resetView3d;
+  $('#view3dLoad').onclick = () => $('#view3dFileInput').click();
+  $('#view3dFileInput').onchange = (e) => { if (e.target.files[0]) loadModelFile(e.target.files[0]); };
+  $('#view3dContainer').ondragover = (e) => { e.preventDefault(); $('#view3dContainer').style.outline = '2px dashed var(--accent)'; };
+  $('#view3dContainer').ondragleave = (e) => { e.preventDefault(); $('#view3dContainer').style.outline = ''; };
+  $('#view3dContainer').ondrop = (e) => { e.preventDefault(); $('#view3dContainer').style.outline = ''; const f = e.dataTransfer.files[0]; if (f) loadModelFile(f); };
 
   // ─── Share & Peer-to-Peer ───
   let peer = null, peerConnections = new Map();
@@ -1210,9 +1327,6 @@
       $('#previewBtn').style.display = filePath.endsWith('.html') || filePath.endsWith('.htm') ? 'inline-flex' : 'none';
     }
   };
-
-  // ─── Init Snap Overlay ───
-  createSnapOverlay();
 
   // ─── Focus input ───
   setTimeout(() => inputEl.focus(), 500);

@@ -38,6 +38,14 @@ contextBridge.exposeInMainWorld('omricode', {
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   getWorkspace: () => ipcRenderer.invoke('get-workspace'),
 
+  // Profiles
+  getProfiles: () => ipcRenderer.invoke('get-profiles'),
+  getActiveProfile: () => ipcRenderer.invoke('get-active-profile'),
+  setActiveProfile: (id: string) => ipcRenderer.invoke('set-active-profile', id),
+  addProfile: (profile: unknown) => ipcRenderer.invoke('add-profile', profile),
+  updateProfile: (id: string, updates: unknown) => ipcRenderer.invoke('update-profile', id, updates),
+  removeProfile: (id: string) => ipcRenderer.invoke('remove-profile', id),
+
   // Misc
   notify: (title: string, body: string) => ipcRenderer.invoke('notify', title, body),
   clearHistory: () => ipcRenderer.invoke('clear-history'),

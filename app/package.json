@@ -54,5 +54,8 @@
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "three": "^0.128.0"
   }
 }

@@ -118,6 +118,10 @@ export function startServer(
           handleFilePreview(req, res);
           break;
 
+        case req.method === 'GET' && pathname === '/files/raw':
+          handleFileRaw(req, res);
+          break;
+
         case req.method === 'POST' && pathname === '/heartbeat':
           await handleHeartbeat(req, res, clientManager);
           break;
@@ -349,6 +353,32 @@ function handleFilePreview(req: http.IncomingMessage, res: http.ServerResponse):
     const ext = path.extname(filePath).slice(1);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ content, ext, name: path.basename(filePath), size: stat.size }));
+  } catch {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Failed to read file' }));
+  }
+}
+
+function handleFileRaw(req: http.IncomingMessage, res: http.ServerResponse): void {
+  const parsed = url.parse(req.url || '', true);
+  const filePath = parsed.query.path as string || '';
+  if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid file path' }));
+    return;
+  }
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.size > 50 * 1024 * 1024) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'File too large' }));
+      return;
+    }
+    const data = fs.readFileSync(filePath);
+    const base64 = data.toString('base64');
+    const ext = path.extname(filePath).slice(1);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ data: base64, ext, name: path.basename(filePath), size: stat.size }));
   } catch {
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Failed to read file' }));
