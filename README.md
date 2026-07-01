@@ -26,6 +26,7 @@ runs on Windows, Linux, and macOS. Think of it as an AI coding partner who:
 - Has an undo button for when it inevitably breaks your project
 
 > **⬇ Download:** [omricode.dev](https://0giinn0.github.io/OmriCode/) — prebuilt binaries for all platforms
+> **⬇ GitHub Releases:** [github.com/0giinn0/OmriCode/releases](https://github.com/0giinn0/OmriCode/releases) — direct download links
 
 ---
 
@@ -49,6 +50,33 @@ to resize. Run commands without leaving the app.
 > **Swap panels** by dragging any panel header — drop it onto another panel's
 > header to exchange their positions. Like tabs in a browser, but with more
 > commitment.
+
+---
+
+## ◆ Downloads
+
+Prebuilt installers are available on the [GitHub Releases page](https://github.com/0giinn0/OmriCode/releases)
+and the [project website](https://0giinn0.github.io/OmriCode/).
+
+| Platform | Format | Status |
+|----------|--------|--------|
+| Windows 10/11 (64-bit) | NSIS Installer (.exe) | ✅ Available |
+| macOS (Intel & Apple Silicon) | DMG | 🔜 Coming soon |
+| Linux (Ubuntu 20.04+) | AppImage / .deb | 🔜 Coming soon |
+
+### Run from source
+```bash
+cd app
+npm install && npm run compile && npm start
+```
+
+### Build installer locally
+```bash
+cd app
+npm run build:win      # Windows
+npm run build:linux    # Linux
+npm run build:mac      # macOS
+```
 
 ---
 
